@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Goal Setter</title>
+  <link rel="stylesheet" href="styles.css" />
+  <!-- PWA / iOS home-screen app -->
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#8b5cf6" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Goal Setter" />
+  <link rel="apple-touch-icon" href="build/icon-180.png" />
+</head>
+<body>
+  <!-- TOP WEEKLY INDICATOR: separate, horizontal, always present -->
+  <header class="weekly-bar-wrap">
+    <button id="menuToggle" class="menu-toggle" aria-label="Menu">☰</button>
+    <div class="weekly-bar-label">
+      <span class="dot weekly-dot"></span>
+      <span>Weekly</span>
+      <span id="weeklyTopPct" class="weekly-pct">0%</span>
+    </div>
+    <div class="weekly-bar-track">
+      <div id="weeklyTopFill" class="weekly-bar-fill"></div>
+    </div>
+  </header>
+
+  <div class="app-body">
+    <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-title">Goal&nbsp;Setter</div>
+      <nav class="nav">
+        <button class="nav-item active" data-page="today">
+          <span class="nav-ico">◧</span> Today
+        </button>
+        <button class="nav-item" data-page="calendar">
+          <span class="nav-ico">▦</span> Calendar
+        </button>
+        <button class="nav-item" data-page="recurring">
+          <span class="nav-ico">↻</span> Recurring
+        </button>
+        <button class="nav-item" data-page="archives">
+          <span class="nav-ico">▤</span> Archives
+        </button>
+      </nav>
+      <div class="sidebar-spacer"></div>
+      <button id="exportNowBtn" class="sidebar-btn" title="Compile today's markdown log now">
+        ⤓ Export log
+      </button>
+      <div id="logTimeRow" class="logtime-row" title="Time the day's completed tasks are auto-logged">
+        <span class="logtime-label">Auto-log at</span>
+        <input id="logTimeInput" class="logtime-input" type="time" />
+      </div>
+      <button id="signInBtn" class="sidebar-btn hidden">🔑 Sign in to sync</button>
+      <div id="accountRow" class="account-row hidden">
+        <span id="accountEmail" class="account-email"></span>
+        <button id="signOutBtn" class="sidebar-btn account-signout">Sign out</button>
+      </div>
+      <button id="widgetToggle" class="sidebar-btn">📌 Sticky widget: off</button>
+      <button id="startupToggle" class="sidebar-btn">⏻ Launch at startup: off</button>
+      <button id="themeToggle" class="sidebar-btn">🌙 Dark mode</button>
+    </aside>
+
+    <!-- ===================== TODAY PAGE ===================== -->
+    <main id="page-today" class="page page-today">
+      <section class="lists-col">
+        <!-- WEEKLY TASKS SECTION -->
+        <div class="list-section weekly-sec">
+          <div class="section-head">
+            <h2>Weekly tasks <span class="neon-text">●</span></h2>
+            <button class="add-mini" data-add="weekly">＋</button>
+          </div>
+          <div id="weeklyList" class="task-list"></div>
+        </div>
+
+        <!-- DAILY TASKS SECTION (fills remaining height, scrolls) -->
+        <div class="list-section daily-sec">
+          <div class="section-head">
+            <h2>Daily tasks <span class="purple-text">●</span></h2>
+            <div class="head-actions">
+              <button class="add-mini" id="splitToggle" title="Split scheduled vs recurring">⊟</button>
+              <button class="add-mini" data-import="1" title="Import / paste from Notion">⇪</button>
+              <button class="add-mini" data-add="daily">＋</button>
+            </div>
+          </div>
+          <div id="dailyList" class="task-list daily-scroll"></div>
+          <input id="quickAdd" class="quick-add" type="text"
+                 placeholder="＋ Quick add — Enter to save, end with (2) or (3) for weight" />
+        </div>
+      </section>
+
+      <!-- PROGRESS BARS: right third, vertical, weekly stacked on top of daily -->
+      <section class="bars-col">
+        <div class="bars-stack">
+          <!-- WEEKLY (top) -->
+          <div class="vbar-group">
+            <div class="vbar-readout">
+              <span id="weeklyPct" class="vpct neon">0%</span>
+              <span class="vlabel"><span class="dot weekly-dot"></span>weekly</span>
+            </div>
+            <div class="vbar-track">
+              <div id="weeklyBarFill" class="vbar-fill weekly"></div>
+            </div>
+          </div>
+
+          <!-- DAILY (bottom) — height scales with total weight -->
+          <div class="vbar-group">
+            <div id="dailyTrack" class="vbar-track">
+              <div id="dailyBarFill" class="vbar-fill daily"></div>
+              <div class="vticks">
+                <span class="vtick" style="bottom:25%"></span>
+                <span class="vtick" style="bottom:50%"></span>
+                <span class="vtick" style="bottom:75%"></span>
+              </div>
+              <div id="dailyBurst" class="burst"></div>
+            </div>
+            <div class="vbar-readout">
+              <span id="dailyPct" class="vpct purple">0%</span>
+              <span class="vlabel"><span class="dot daily-dot"></span>daily</span>
+              <span id="dailyMeta" class="daily-meta"></span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ===================== CALENDAR PAGE ===================== -->
+    <main id="page-calendar" class="page page-calendar hidden">
+      <div class="cal-header">
+        <h1 class="archive-title">Calendar</h1>
+        <button id="exportGcalBtn" class="btn-primary" title="Export weight ≥ 2 tasks as an .ics file for Google Calendar">
+          ⤓ Export to Google Calendar
+        </button>
+      </div>
+      <p class="cal-sub">Last month · this month · next month. Click a day to see &amp; edit all its tasks (weekly tasks show on Mondays), or click a task to edit it directly.</p>
+      <div id="calMonths" class="cal-months"></div>
+    </main>
+
+    <!-- ===================== RECURRING PAGE ===================== -->
+    <main id="page-recurring" class="page page-recurring hidden">
+      <div class="cal-header">
+        <h1 class="archive-title">Recurring tasks</h1>
+        <button id="addRecurringBtn" class="btn-primary">＋ New recurring</button>
+      </div>
+      <p class="cal-sub">Set the days each task repeats, its weight, and whether it's a routine chore.
+        Routine tasks sit lowest in priority.</p>
+      <div id="recurringBody" class="recurring-body"></div>
+    </main>
+
+    <!-- ===================== ARCHIVES PAGE ===================== -->
+    <main id="page-archives" class="page page-archives hidden">
+      <h1 class="archive-title">Archives</h1>
+      <div class="archive-tabs">
+        <button class="archive-tab active" data-arch="daily">Daily (7 days)</button>
+        <button class="archive-tab" data-arch="weekly">Weekly (4 weeks)</button>
+      </div>
+      <div id="archiveBody" class="archive-body"></div>
+    </main>
+  </div>
+
+  <!-- ADD / EDIT TASK MODAL -->
+  <div id="modal" class="modal-overlay hidden">
+    <div class="modal">
+      <h3 id="modalTitle">New task</h3>
+      <div id="modalDateNote" class="modal-date-note hidden"></div>
+      <label class="field-label">Task</label>
+      <input id="taskTitle" class="text-input" type="text" placeholder="What needs doing?" />
+      <label class="field-label">Weight</label>
+      <div id="weightPick" class="weight-pick">
+        <button data-w="1" class="w-btn active">1</button>
+        <button data-w="2" class="w-btn">2</button>
+        <button data-w="3" class="w-btn">3</button>
+      </div>
+      <div id="dateRow" class="date-row hidden">
+        <label id="dateLabel" class="field-label">Date</label>
+        <input id="taskDate" class="text-input" type="date" />
+      </div>
+      <label class="check-row">
+        <input id="recurringChk" type="checkbox" />
+        <span id="recurringLabel">Recurring every day</span>
+      </label>
+      <div id="dayPickWrap" class="day-pick-wrap hidden">
+        <label class="field-label">Repeat on (none = every day)</label>
+        <div id="dayPick" class="day-pick">
+          <button type="button" data-day="1">M</button>
+          <button type="button" data-day="2">T</button>
+          <button type="button" data-day="3">W</button>
+          <button type="button" data-day="4">T</button>
+          <button type="button" data-day="5">F</button>
+          <button type="button" data-day="6">S</button>
+          <button type="button" data-day="0">S</button>
+        </div>
+      </div>
+      <label id="routineRow" class="check-row hidden">
+        <input id="routineChk" type="checkbox" />
+        <span>Routine task (trivial everyday chore — lowest priority)</span>
+      </label>
+      <div class="modal-actions">
+        <button id="modalDelete" class="btn-danger hidden">Delete</button>
+        <button id="modalCancel" class="btn-ghost">Cancel</button>
+        <button id="modalSave" class="btn-primary">Add task</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- IMPORT MODAL -->
+  <div id="importModal" class="modal-overlay hidden">
+    <div class="modal">
+      <h3>Import from Notion</h3>
+      <p class="modal-hint">Paste a checklist from Notion (or any markdown list). Lines like
+        <code>- [ ] Task</code> or <code>• Task</code> become tasks. Add <code>(2)</code> or
+        <code>!2</code> at the end to set a weight.</p>
+      <textarea id="importText" class="text-area" placeholder="- [ ] Write report (3)&#10;- [ ] Reply to emails (1)&#10;- [ ] Gym !2"></textarea>
+      <label class="check-row">
+        <input id="importRecurring" type="checkbox" />
+        <span>Make these recurring daily tasks</span>
+      </label>
+      <div class="modal-actions">
+        <button id="importCancel" class="btn-ghost">Cancel</button>
+        <button id="importSave" class="btn-primary">Import</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DAY VIEW MODAL: every task on a date, all editable -->
+  <div id="dayModal" class="modal-overlay hidden">
+    <div class="modal">
+      <h3 id="dayModalTitle">Day</h3>
+      <div id="dayModalBody" class="day-modal-body"></div>
+      <div class="modal-actions">
+        <button id="dayModalAdd" class="btn-primary">＋ Add task</button>
+        <button id="dayModalClose" class="btn-ghost">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AUTH OVERLAY (only shown in cloud-sync mode when signed out) -->
+  <div id="authModal" class="modal-overlay hidden">
+    <div class="modal">
+      <h3 id="authTitle">Sign in to sync</h3>
+      <p class="modal-hint">Sign in with the same account on every device to keep your tasks in sync.</p>
+      <label class="field-label">Email</label>
+      <input id="authEmail" class="text-input" type="email" placeholder="you@example.com" />
+      <label class="field-label">Password</label>
+      <input id="authPassword" class="text-input" type="password" placeholder="••••••••" />
+      <div id="authError" class="auth-error hidden"></div>
+      <div class="modal-actions">
+        <button id="authToggleMode" class="btn-ghost">Create account</button>
+        <button id="authSubmit" class="btn-primary">Sign in</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="vendor/supabase.js"></script>
+  <script src="supabase-config.js"></script>
+  <script src="store.js"></script>
+  <script src="supabase-backend.js"></script>
+  <script src="renderer.js"></script>
+</body>
+</html>

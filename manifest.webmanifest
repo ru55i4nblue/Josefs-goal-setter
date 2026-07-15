@@ -1,0 +1,16 @@
+{
+  "name": "Goal Setter",
+  "short_name": "Goal Setter",
+  "description": "Weighted goal & checklist tracker with satisfying progress bars",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#191919",
+  "theme_color": "#8b5cf6",
+  "icons": [
+    { "src": "build/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "build/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "build/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

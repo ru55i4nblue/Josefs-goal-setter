@@ -1,0 +1,32 @@
+name: Build macOS app
+
+# Builds an unsigned Goal Setter .dmg on a cloud Mac.
+# Run it from the repo's "Actions" tab -> "Build macOS app" -> "Run workflow",
+# then download the .dmg from the run's "Artifacts" section.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm install
+
+      - run: npm run dist:mac
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false   # no code signing (unsigned build)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: goal-setter-macos-dmg
+          path: dist/*.dmg
+          if-no-files-found: error

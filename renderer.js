@@ -985,10 +985,33 @@ function dayModalSection(label) {
   return h;
 }
 
-function dayTaskRow(kind, t, editable) {
-  const row = el('div', 'day-task' + (t.done ? ' done' : ''));
-  const mark = el('span', t.done ? 'ok' : 'no');
-  mark.textContent = t.done ? '✓' : '○';
+// A recurring task's `done` flag only reflects the CURRENT period. On any other
+// day/week it's a fresh, not-yet-done occurrence, so show it as incomplete.
+function occurrenceDone(t, kind, key) {
+  if (!t.recurring) return t.done;
+  const current = kind === 'weekly' ? weekKeyFromKey(key) === weekKey() : key === todayKey();
+  return current ? t.done : false;
+}
+
+function dayTaskRow(kind, t, opts) {
+  const { editable, container } = opts;
+  const done = occurrenceDone(t, kind, dayModalKey);
+  const row = el('div', 'day-task' + (done ? ' done' : ''));
+  row.dataset.id = t.id;
+  row.dataset.kind = kind;
+
+  if (editable && container) {
+    row.draggable = true;
+    row.ondragstart = () => row.classList.add('dragging');
+    row.ondragend = () => { row.classList.remove('dragging'); commitDayOrder(container); };
+    const handle = el('span', 'drag-handle');
+    handle.textContent = '⠿';
+    handle.title = 'Drag to reorder';
+    row.appendChild(handle);
+  }
+
+  const mark = el('span', done ? 'ok' : 'no');
+  mark.textContent = done ? '✓' : '○';
   const name = el('span', 'day-task-name');
   name.textContent = t.title;
   const badge = el('span', 'weight-badge');
@@ -1018,6 +1041,40 @@ function dayTaskRow(kind, t, editable) {
   return row;
 }
 
+function dayAfterElement(container, y) {
+  const rows = [...container.querySelectorAll('.day-task:not(.dragging)')];
+  let closest = { offset: -Infinity, el: null };
+  for (const row of rows) {
+    const box = row.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    if (offset < 0 && offset > closest.offset) closest = { offset, el: row };
+  }
+  return closest.el;
+}
+
+function commitDayOrder(container) {
+  [...container.querySelectorAll('.day-task')].forEach((row, i) => {
+    const t = findTask(row.dataset.kind, row.dataset.id);
+    if (t) t.order = i;
+  });
+  save();
+  render();
+  renderDayModal();
+}
+
+function dayDragList() {
+  const list = el('div', 'day-drag-list');
+  list.ondragover = (e) => {
+    e.preventDefault();
+    const dragging = list.querySelector('.day-task.dragging');
+    if (!dragging) return;
+    const after = dayAfterElement(list, e.clientY);
+    if (after == null) list.appendChild(dragging);
+    else list.insertBefore(dragging, after);
+  };
+  return list;
+}
+
 function renderDayModal() {
   const key = dayModalKey;
   const tk = todayKey();
@@ -1029,7 +1086,9 @@ function renderDayModal() {
   if (weekly.length) {
     const wkOf = weekKeyFromKey(key);
     body.appendChild(dayModalSection(wkOf === weekKey() ? 'Weekly · this week' : 'Weekly · ' + wkOf));
-    weekly.forEach((t) => body.appendChild(dayTaskRow('weekly', t, editableDay && !!t.id)));
+    const wList = dayDragList();
+    sortTasks(weekly).forEach((t) => wList.appendChild(dayTaskRow('weekly', t, { editable: editableDay && !!t.id, container: editableDay ? wList : null })));
+    body.appendChild(wList);
   }
 
   body.appendChild(dayModalSection('Daily'));
@@ -1039,7 +1098,9 @@ function renderDayModal() {
     e.textContent = 'no tasks on this day';
     body.appendChild(e);
   } else {
-    sortDaily(daily).forEach((t) => body.appendChild(dayTaskRow('daily', t, editableDay && !!t.id)));
+    const dList = dayDragList();
+    sortDaily(daily).forEach((t) => dList.appendChild(dayTaskRow('daily', t, { editable: editableDay && !!t.id, container: editableDay ? dList : null })));
+    body.appendChild(dList);
   }
 }
 
@@ -1083,7 +1144,7 @@ function buildMonth(y, mIdx, isCurrent) {
     pills.slice(0, 3).forEach(({ t, kind }) => {
       const p = el('div', 'cal-pill'
         + (kind === 'weekly' ? ' weekly' : (t.weight >= 2 ? ' w-hi' : ''))
-        + (t.done ? ' done' : ''));
+        + (occurrenceDone(t, kind, key) ? ' done' : ''));
       p.textContent = t.title;
       p.title = `${t.title} (×${t.weight})` + (kind === 'weekly' ? ' [weekly]' : '');
       // today/future live tasks can be edited or deleted straight from the calendar

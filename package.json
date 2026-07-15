@@ -8,7 +8,7 @@
     "icon": "node build-icon.js && node build-ico.js",
     "package": "electron-packager . \"Goal Setter\" --platform=win32 --arch=x64 --icon=build/icon.ico --out=dist --overwrite --ignore=\"(dist|www|\\.claude|electron-.*\\.log|build-ico?n?\\.js)\"",
     "dist": "electron-builder --win",
-    "dist:mac": "electron-builder --mac",
+    "dist:mac": "electron-builder --mac --publish never",
     "build:web": "node build-web.js"
   },
   "author": "",
@@ -64,7 +64,8 @@
       ],
       "category": "public.app-category.productivity",
       "icon": "build/icon-1024.png",
-      "identity": null
+      "identity": null,
+      "gatekeeperAssess": false
     },
     "dmg": {
       "title": "Goal Setter",

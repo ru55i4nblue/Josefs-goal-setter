@@ -1,0 +1,71 @@
+name: Release
+
+# Builds installers for macOS (.dmg) and Windows (Setup .exe) and publishes
+# them as a GitHub Release. Trigger by pushing a tag like v1.0.0, or manually
+# from the Actions tab (manual runs attach artifacts to a draft release).
+
+on:
+  push:
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: npm run dist:mac
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-dmg
+          path: dist/*.dmg
+          if-no-files-found: error
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: npm run dist
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+      - uses: actions/upload-artifact@v4
+        with:
+          name: win-setup
+          path: dist/*.exe
+          if-no-files-found: error
+
+  release:
+    needs: [mac, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: files
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: files/*
+          draft: ${{ github.event_name == 'workflow_dispatch' }}
+          generate_release_notes: true
+          body: |
+            **Goal Setter** — weighted goal & checklist tracker with satisfying progress
+            bars, daily/weekly/recurring tasks, an always-on-top widget, and live sync.
+
+            ### Downloads
+            - **Windows:** `Goal Setter Setup <version>.exe` — run it (SmartScreen: *More info → Run anyway*; the build is unsigned).
+            - **macOS (Apple Silicon):** `Goal Setter-<version>-arm64.dmg`
+            - **macOS (Intel):** `Goal Setter-<version>-x64.dmg`
+              First launch on macOS: right-click the app → **Open** (unsigned build).

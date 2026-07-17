@@ -126,8 +126,10 @@ function createWidgetWindow() {
       nodeIntegration: false
     }
   });
-  widgetWin.setAlwaysOnTop(true, 'floating');
-  widgetWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  // 'screen-saver' level floats above macOS fullscreen apps ('floating' does not);
+  // skipTransformProcessType stops macOS from bouncing the dock when it shows.
+  widgetWin.setAlwaysOnTop(true, 'screen-saver');
+  widgetWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true, skipTransformProcessType: true });
   widgetWin.loadFile('widget.html');
   widgetWin.webContents.on('did-finish-load', () => {
     if (lastWidgetPayload) widgetWin.webContents.send('widget:data', lastWidgetPayload);

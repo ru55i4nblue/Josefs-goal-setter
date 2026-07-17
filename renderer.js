@@ -116,11 +116,17 @@ function snapshot(tasks) {
   }));
 }
 
+// Returns true only when a day/week actually rolled over. Crucially it must NOT
+// save when nothing changed — the minutely timer calls this, and a no-op save
+// used to push to the cloud every minute, whose realtime echo re-rendered the
+// whole UI ("random refreshes").
 function rolloverIfNeeded() {
   const tk = todayKey();
   const wk = weekKey();
+  let changed = false;
 
   if (state.lastDay !== tk) {
+    changed = true;
     // archive only the tasks that were actually active on the day that just ended
     const ended = activeDaily(state.lastDay);
     if (ended.length) {
@@ -136,6 +142,7 @@ function rolloverIfNeeded() {
   }
 
   if (state.lastWeek !== wk) {
+    changed = true;
     if (state.weeklyTasks.length) {
       state.weeklyArchive.unshift({ week: state.lastWeek, tasks: snapshot(state.weeklyTasks) });
       state.weeklyArchive = state.weeklyArchive.slice(0, 4);
@@ -151,7 +158,8 @@ function rolloverIfNeeded() {
     state.scheduledWeekly = state.scheduledWeekly.filter((t) => t.date && weekKeyFromKey(t.date) > wk);
     state.lastWeek = wk;
   }
-  save();
+  if (changed) save();
+  return changed;
 }
 
 /* ============================================================
@@ -1648,7 +1656,9 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
 }
 scheduleLogCheck();
 // catch day/week rollover if the app is left open across midnight
-setInterval(() => { rolloverIfNeeded(); render(); }, 60 * 1000);
+// re-render ONLY when the day/week actually rolls over — an unconditional
+// render here rebuilt the lists every minute (lost scroll/hover, felt like a refresh)
+setInterval(() => { if (rolloverIfNeeded()) render(); }, 60 * 1000);
 
 // recompute the dynamic weight cap + container size as the window resizes
 let resizeRaf;

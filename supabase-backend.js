@@ -20,7 +20,7 @@
   let session = null;
   let userId = null;
   let lastPushedAt = null;
-  let lastPushedJson = null;        // exact payload we last wrote, to ignore our own echo
+  let lastPushedRev = null;         // revision id stamped into our last write, to ignore its echo
   let pushTimer = null;
   const authCbs = [];
 
@@ -71,9 +71,12 @@
     clearTimeout(pushTimer);
     pushTimer = setTimeout(async () => {
       lastPushedAt = new Date().toISOString();
-      lastPushedJson = JSON.stringify(obj);
+      // stamp a revision id into the payload; jsonb reorders keys so comparing
+      // serialized JSON is unreliable — an id survives the round-trip intact
+      lastPushedRev = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+      const payload = Object.assign({}, obj, { __rev: lastPushedRev });
       await client.from('user_state').upsert({
-        user_id: userId, data: obj, updated_at: lastPushedAt
+        user_id: userId, data: payload, updated_at: lastPushedAt
       });
     }, 700);
   }
@@ -89,10 +92,9 @@
           // not carry the full row (depends on REPLICA IDENTITY), so re-fetch it.
           const { data } = await client
             .from('user_state').select('data').eq('user_id', userId).maybeSingle();
-          if (!data) return;
-          // Ignore the echo of our own write by comparing the actual data
-          // (timestamp strings can be reformatted by Postgres and mismatch).
-          if (JSON.stringify(data.data) === lastPushedJson) return;
+          if (!data || !data.data) return;
+          // ignore the echo of our own write via the revision id we stamped
+          if (data.data.__rev && data.data.__rev === lastPushedRev) return;
           handler(data.data);
         })
       .subscribe();

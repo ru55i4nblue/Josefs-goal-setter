@@ -642,13 +642,18 @@ body.dark .checkbox.neon.checked::after { color: #08130c; }
 .btn-restore:hover { background: var(--purple) !important; color: #fff !important; }
 
 /* ===================== CATEGORY MANAGER EXTRAS ===================== */
-.cat-moves { display: flex; flex-direction: column; gap: 1px; }
+.cat-moves { display: flex; flex-direction: column; gap: 3px; }
 .cat-move {
-  background: none; border: 1px solid var(--border-strong); cursor: pointer;
-  color: var(--text-soft); font-size: 9px; line-height: 1;
-  width: 20px; height: 15px; border-radius: 4px; padding: 0;
+  background: var(--bg-elev); border: 1px solid var(--border-strong); cursor: pointer;
+  color: var(--text-soft); font-size: 14px; line-height: 1;
+  width: 34px; height: 26px; border-radius: 6px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .12s, border-color .12s, color .12s;
 }
-.cat-move:hover:not(:disabled) { border-color: var(--purple); color: var(--purple); }
+.cat-move:hover:not(:disabled) {
+  border-color: var(--purple); color: var(--purple); background: var(--hover);
+}
+.cat-move:active:not(:disabled) { transform: translateY(1px); }
 .cat-move:disabled { opacity: .3; cursor: default; }
 
 .cat-swatches { display: flex; gap: 3px; }

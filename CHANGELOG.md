@@ -25,9 +25,10 @@ matching categories with their recurrence and dates intact.
 - **Weekly calendar** that opens on the current week, with previous / next / Today
   navigation, replacing the three-month grid.
 - **Category reordering** (↑ ↓ in the category manager) — the order there is the
-  order of the boxes on Taskmaster.
+  order of the boxes on Taskmaster. Each row in the manager is tinted with its
+  category's colour, so a reorder is obvious at a glance.
 - **Category colour coding** from an eight-colour palette, applied to the category
-  dot, its checkboxes and the widget.
+  dot, its checkboxes, the manager row and the widget.
 - **Custom categories.** Create your own task groups alongside Weekly, Daily and
   Routine. Their tasks persist until completed or deleted (they don't expire at
   the end of a day), and completing one files it into that category's **own

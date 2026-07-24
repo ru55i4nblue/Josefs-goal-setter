@@ -89,7 +89,7 @@ function renderCatManager() {
   if (!host) return;
   host.innerHTML = '';
   state.categories.forEach((cat, idx) => {
-    const row = el('div', 'cat-row');
+    const row = el('div', 'cat-row tint-' + cat.color);
 
     // --- reorder (order here drives the order of the boxes on Taskmaster) ---
     const moves = el('div', 'cat-moves');
@@ -116,7 +116,9 @@ function renderCatManager() {
       const s = el('button', 'swatch ' + id + (cat.color === id ? ' active' : ''));
       s.title = label;
       s.onclick = () => {
+        row.classList.remove('tint-' + cat.color);
         cat.color = id;
+        row.classList.add('tint-' + id);
         [...swatches.children].forEach((x) => x.classList.toggle('active', x === s));
         save(); render(); pushWidget();
       };

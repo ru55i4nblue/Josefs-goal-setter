@@ -692,10 +692,29 @@ body.dark .checkbox.neon.checked::after { color: #08130c; }
 }
 .settings-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 .cat-manager { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+/* Each row wears its category's colour, so a reorder is obvious at a glance. */
+.tint-purple { --c: #8b5cf6; }
+.tint-neon   { --c: #16c46a; }
+.tint-blue   { --c: #3b82f6; }
+.tint-amber  { --c: #f59e0b; }
+.tint-pink   { --c: #ec4899; }
+.tint-teal   { --c: #14b8a6; }
+.tint-red    { --c: #ef4444; }
+.tint-gray   { --c: #9b9a97; }
+body.dark .tint-neon { --c: #2bff88; }
+
 .cat-row {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; background: var(--bg);
+  border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px;
+  background: var(--bg);
+  border-left: 5px solid var(--c, var(--border-strong));
+  box-shadow: inset 0 0 0 100vw color-mix(in srgb, var(--c, transparent) 7%, transparent);
+  transition: box-shadow .18s ease, border-color .18s ease;
 }
+.cat-row:hover {
+  box-shadow: inset 0 0 0 100vw color-mix(in srgb, var(--c, transparent) 13%, transparent);
+}
+.cat-row .rec-title { color: var(--text); font-weight: 600; }
 .cat-type {
   font-size: 10px; text-transform: uppercase; letter-spacing: .05em;
   color: var(--text-faint); font-weight: 600;

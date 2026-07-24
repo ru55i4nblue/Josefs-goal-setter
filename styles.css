@@ -704,6 +704,11 @@ body.dark .checkbox.neon.checked::after { color: #08130c; }
 .cat-new-row { display: flex; gap: 8px; }
 .cat-new-row .text-input { flex: 1; }
 .widget-cat-list { display: flex; flex-direction: column; gap: 2px; }
+.date-preview {
+  margin-top: 8px; font-size: 12px; color: var(--text-faint);
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 6px; padding: 7px 10px;
+}
 
 /* ===================== MODALS ===================== */
 .modal-overlay {

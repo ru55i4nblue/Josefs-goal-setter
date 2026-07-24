@@ -19,6 +19,9 @@ matching categories with their recurrence and dates intact.
   then grouped by date).
 - **Deliver-by dates shown on every task row**, beside the weight, with today and
   overdue called out.
+- **Selectable date format** (Settings → Interface) with eleven options, from
+  `Sat, Jul 25` to fully written-out `Saturday, 25th July`, plus day/month/year,
+  slash and ISO styles. Applies everywhere dates appear, with a live preview.
 - **Weekly calendar** that opens on the current week, with previous / next / Today
   navigation, replacing the three-month grid.
 - **Category reordering** (↑ ↓ in the category manager) — the order there is the

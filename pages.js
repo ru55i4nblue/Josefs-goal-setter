@@ -201,6 +201,16 @@ function addCategory(name) {
 function renderSettings() {
   $('#setShowImport').checked = !!state.settings.showImport;
   $('#setShowWeightNotes').checked = !!state.settings.showWeightNotes;
+
+  const sel = $('#setDateFormat');
+  sel.innerHTML = '';
+  DATE_FORMATS.forEach((f) => {
+    const o = document.createElement('option');
+    o.value = f.id; o.textContent = formatSample(f.id);
+    sel.appendChild(o);
+  });
+  sel.value = state.settings.dateFormat || DEFAULT_DATE_FORMAT;
+  updateDatePreview();
   const host = $('#widgetCatList');
   host.innerHTML = '';
   state.categories.forEach((c) => {
@@ -213,6 +223,13 @@ function renderSettings() {
     l.appendChild(cb); l.appendChild(s);
     host.appendChild(l);
   });
+}
+
+// live sample of the chosen format, using today so it reads naturally
+function updateDatePreview() {
+  const tk = todayKey();
+  $('#dateFormatPreview').textContent =
+    `Today reads as “${prettyDate(tk)}” · task badges show “${shortDate(tk)}”`;
 }
 
 /* ============================================================
@@ -780,6 +797,13 @@ function wire() {
   /* ---- settings ---- */
   $('#setShowImport').onchange = (e) => { state.settings.showImport = e.target.checked; save(); render(); };
   $('#setShowWeightNotes').onchange = (e) => { state.settings.showWeightNotes = e.target.checked; save(); render(); };
+  $('#setDateFormat').onchange = (e) => {
+    state.settings.dateFormat = e.target.value;
+    save();
+    updateDatePreview();
+    render();
+    if (currentPage === 'calendar') renderCalendar();
+  };
   $('#logTimeInput').value = state.logTime || '22:00';
   $('#logTimeInput').onchange = (e) => {
     const v = e.target.value;

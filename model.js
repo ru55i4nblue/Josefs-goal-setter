@@ -25,13 +25,56 @@ const nowTime = () => {
   const d = new Date();
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
-const prettyDate = (key) => {
-  const [y, m, dd] = key.split('-').map(Number);
-  return new Date(y, m - 1, dd).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
-};
-const shortDate = (key) => {
-  const [y, m, dd] = key.split('-').map(Number);
-  return new Date(y, m - 1, dd).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+/* ---------- date formatting (user-selectable) ---------- */
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTHS_LONG = ['January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'];
+const DAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DAYS_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+function ordinal(n) {
+  const s = ['th', 'st', 'nd', 'rd'], v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+function dateParts(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  const wd = new Date(y, m - 1, d).getDay();
+  return {
+    y, m, d, key,
+    dd: pad(d), mm: pad(m),
+    MS: MONTHS_SHORT[m - 1], ML: MONTHS_LONG[m - 1],
+    DS: DAYS_SHORT[wd], DL: DAYS_LONG[wd],
+    ord: ordinal(d)
+  };
+}
+
+// `full` is used for headings and day titles; `short` for tight spots like the
+// deliver-by badge on a task row.
+const DATE_FORMATS = [
+  { id: 'wd-mon-d',    full: (p) => `${p.DS}, ${p.MS} ${p.d}`,        short: (p) => `${p.MS} ${p.d}` },
+  { id: 'wdl-mon-d',   full: (p) => `${p.DL}, ${p.MS} ${p.d}`,        short: (p) => `${p.MS} ${p.d}` },
+  { id: 'wdl-ord-mon', full: (p) => `${p.DL}, ${p.ord} ${p.ML}`,      short: (p) => `${p.ord} ${p.MS}` },
+  { id: 'wd-d-mon',    full: (p) => `${p.DS} ${p.d} ${p.MS}`,         short: (p) => `${p.d} ${p.MS}` },
+  { id: 'ord-mon',     full: (p) => `${p.ord} ${p.ML}`,               short: (p) => `${p.ord} ${p.MS}` },
+  { id: 'd-mon-y',     full: (p) => `${p.d} ${p.ML} ${p.y}`,          short: (p) => `${p.d} ${p.MS}` },
+  { id: 'mon-d-y',     full: (p) => `${p.ML} ${p.d}, ${p.y}`,         short: (p) => `${p.MS} ${p.d}` },
+  { id: 'mon-d',       full: (p) => `${p.MS} ${p.d}`,                 short: (p) => `${p.MS} ${p.d}` },
+  { id: 'dmy-slash',   full: (p) => `${p.dd}/${p.mm}/${p.y}`,         short: (p) => `${p.dd}/${p.mm}` },
+  { id: 'mdy-slash',   full: (p) => `${p.mm}/${p.dd}/${p.y}`,         short: (p) => `${p.mm}/${p.dd}` },
+  { id: 'iso',         full: (p) => p.key,                            short: (p) => `${p.mm}-${p.dd}` }
+];
+const DEFAULT_DATE_FORMAT = 'wd-mon-d';   // Sat, Jul 25
+
+function dateFormat() {
+  const id = (typeof state !== 'undefined' && state.settings && state.settings.dateFormat) || DEFAULT_DATE_FORMAT;
+  return DATE_FORMATS.find((f) => f.id === id) || DATE_FORMATS[0];
+}
+const prettyDate = (key) => dateFormat().full(dateParts(key));
+const shortDate = (key) => dateFormat().short(dateParts(key));
+// sample renderings for the settings picker
+const formatSample = (id) => {
+  const f = DATE_FORMATS.find((x) => x.id === id) || DATE_FORMATS[0];
+  return f.full(dateParts('2026-07-25'));
 };
 function weekKeyFromKey(key) {
   const [y, m, d] = key.split('-').map(Number);
@@ -72,7 +115,7 @@ function defaultState() {
     dailyArchive: [],   // [{date, tasks:[snapshot]}]
     weeklyArchive: [],  // [{week, tasks:[snapshot]}]
     dayOrders: {},      // { 'YYYY-MM-DD': { taskId: index } } — per-day manual order
-    settings: { showImport: true, showWeightNotes: true },
+    settings: { showImport: true, showWeightNotes: true, dateFormat: DEFAULT_DATE_FORMAT },
     taskmasterView: 'categories',   // 'categories' (per-category boxes) | 'grouped' (one due-today box)
     lastDay: todayKey(),
     lastWeek: weekKey(),
@@ -105,6 +148,7 @@ function migrate(s) {
   if (!s.settings) s.settings = { showImport: true, showWeightNotes: true };
   if (typeof s.settings.showImport !== 'boolean') s.settings.showImport = true;
   if (typeof s.settings.showWeightNotes !== 'boolean') s.settings.showWeightNotes = true;
+  if (!DATE_FORMATS.some((f) => f.id === s.settings.dateFormat)) s.settings.dateFormat = DEFAULT_DATE_FORMAT;
   if (s.taskmasterView !== 'grouped') s.taskmasterView = 'categories';
 
   // --- fold the old v1 arrays into the unified task list (once) ---

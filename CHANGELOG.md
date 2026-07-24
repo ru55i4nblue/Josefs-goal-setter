@@ -7,6 +7,10 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [2.0.0] — 2026-07-25
+
 A large restructure around user-defined categories. **Existing saves migrate
 automatically** — daily, scheduled, weekly and routine tasks are moved into the
 matching categories with their recurrence and dates intact.
@@ -126,5 +130,6 @@ First public release. Windows installer and macOS disk images published from CI.
 - Recurring tasks showing as already completed when viewing a future day.
 - macOS CI builds failing while attempting to publish a release.
 
-[Unreleased]: https://github.com/ru55i4nblue/goal-setter/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/ru55i4nblue/goal-setter/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/ru55i4nblue/goal-setter/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/ru55i4nblue/goal-setter/releases/tag/v1.0.0

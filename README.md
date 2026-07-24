@@ -70,6 +70,8 @@ live progress — and you can **check tasks off right on the widget**.
 - **Google Calendar export** — one click writes an `.ics` of your weight-2+ tasks
   (recurring ones become repeating events) ready to import.
 
+What's new in each version is listed in [CHANGELOG.md](CHANGELOG.md).
+
 ## Your data & privacy
 
 - Signing in is optional on desktop — without an account everything stays on your

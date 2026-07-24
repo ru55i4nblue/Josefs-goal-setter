@@ -94,7 +94,6 @@ function afterChange() {
   save();
   render();
   if (currentPage === 'calendar') renderCalendar();
-  if (currentPage === 'taskmaster') renderTaskmaster();
   if (currentPage === 'create') renderCatManager();
   if (currentPage === 'archives') renderArchive();
 }
@@ -189,26 +188,43 @@ function recurLabel(t) {
 }
 
 function render() {
-  renderCategoryBoxes();
+  renderTaskArea();
   renderBars();
   pushWidget();
 }
 
-function renderCategoryBoxes() {
+function renderTaskArea() {
   const host = $('#categoryCols');
   if (!host) return;
   host.innerHTML = '';
-  state.categories.forEach((cat) => host.appendChild(categoryBox(cat)));
+  document.querySelectorAll('.view-btn').forEach((b) =>
+    b.classList.toggle('active', b.dataset.view === state.taskmasterView));
+  if (state.taskmasterView === 'grouped') renderGroupedView(host);
+  else state.categories.forEach((cat) => host.appendChild(categoryBox(cat)));
+}
+
+// Tasks a category box should show: everything still relevant, plus today's
+// completions so ticking one off doesn't make it vanish mid-glance.
+function catBoxTasks(cat) {
+  const tk = todayKey();
+  return tasksOf(cat.id).filter((t) => {
+    if (t.recurring) return activeOn(t, tk) || dueDateOf(t) > tk;
+    if (t.done) return t.deliverBy === tk;
+    return true;
+  });
 }
 
 function categoryBox(cat) {
   const dateKey = todayKey();
-  const box = el('div', 'list-section cat-box' + (cat.type === 'daily' ? ' daily-sec' : ''));
+  const box = el('div', 'list-section cat-box');
   box.dataset.cat = cat.id;
 
-  const all = sortInCat(catTasksFor(cat.id, dateKey), cat, dateKey);
+  const pool = catBoxTasks(cat);
+  const dueToday = sortInCat(pool.filter((t) => dueDateOf(t) <= dateKey), cat, dateKey);
+  const later = pool.filter((t) => dueDateOf(t) > dateKey)
+    .sort((a, b) => dueDateOf(a).localeCompare(dueDateOf(b)) || orderOf(a, dateKey) - orderOf(b, dateKey));
+  const all = dueToday.concat(later);
   const limit = cat.expanded ? all.length : Math.max(1, cat.limit || 3);
-  const shown = all.slice(0, limit);
 
   /* ---- header ---- */
   const head = el('div', 'section-head');
@@ -228,14 +244,16 @@ function categoryBox(cat) {
   };
 
   mini('▤', `Open ${cat.name} archive`, () => { showPage('archives'); setArchiveTab(archiveTabForCat(cat)); });
-  mini(cat.sort === 'weight' ? '⇅' : '↕',
-    cat.sort === 'weight' ? 'Sorting by weight (low→high) — switch to manual' : 'Sort by weight (low→high)',
-    () => { cat.sort = cat.sort === 'weight' ? 'manual' : 'weight'; save(); renderCategoryBoxes(); },
-    cat.sort === 'weight');
+  if (catHasWeight(cat.id)) {
+    mini(cat.sort === 'weight' ? '⇅' : '↕',
+      cat.sort === 'weight' ? 'Sorting by weight (low→high) — switch to manual' : 'Sort by weight (low→high)',
+      () => { cat.sort = cat.sort === 'weight' ? 'manual' : 'weight'; save(); renderTaskArea(); },
+      cat.sort === 'weight');
+  }
   if (all.length > (cat.limit || 3)) {
     mini(cat.expanded ? '⌃' : '⌄',
       cat.expanded ? 'Collapse to top tasks' : `Expand all ${all.length}`,
-      () => { cat.expanded = !cat.expanded; save(); renderCategoryBoxes(); },
+      () => { cat.expanded = !cat.expanded; save(); renderTaskArea(); },
       cat.expanded);
   }
   if (cat.type === 'daily' && state.settings.showImport) {
@@ -245,29 +263,38 @@ function categoryBox(cat) {
   head.appendChild(actions);
   box.appendChild(head);
 
-  /* ---- list ---- */
-  const list = el('div', 'task-list' + (cat.type === 'daily' ? ' daily-scroll' : ''));
+  /* ---- due today (highlighted) then upcoming ---- */
+  let budget = limit;
   if (!all.length) {
     const hint = el('div', 'empty-hint');
     hint.textContent = `No ${cat.name.toLowerCase()} tasks — add one with ＋`;
-    list.appendChild(hint);
+    box.appendChild(hint);
   } else {
-    shown.forEach((t) => list.appendChild(taskRow(t, list, dateKey, cat)));
+    if (dueToday.length) {
+      const due = el('div', 'due-today-box');
+      const dh = el('div', 'due-today-head');
+      dh.textContent = `Due today · ${dueToday.length}`;
+      due.appendChild(dh);
+      const dl = el('div', 'task-list');
+      dueToday.slice(0, budget).forEach((t) => dl.appendChild(taskRow(t, dl, dateKey, cat)));
+      budget -= Math.min(budget, dueToday.length);
+      makeSortable(dl, cat, dateKey);
+      due.appendChild(dl);
+      box.appendChild(due);
+    }
+    if (later.length && budget > 0) {
+      const ul = el('div', 'task-list upcoming-list');
+      later.slice(0, budget).forEach((t) => ul.appendChild(taskRow(t, ul, dateKey, cat)));
+      makeSortable(ul, cat, dateKey);
+      box.appendChild(ul);
+    }
   }
-  list.ondragover = (e) => {
-    e.preventDefault();
-    const dragging = list.querySelector('.task-row.dragging');
-    if (!dragging) return;
-    const after = dragAfterElement(list, e.clientY);
-    if (after == null) list.appendChild(dragging);
-    else list.insertBefore(dragging, after);
-  };
-  box.appendChild(list);
 
-  if (all.length > shown.length) {
+  const hiddenCount = all.length - Math.min(all.length, limit);
+  if (hiddenCount > 0) {
     const more = el('button', 'cat-more-btn');
-    more.textContent = `＋ ${all.length - shown.length} more — expand`;
-    more.onclick = () => { cat.expanded = true; save(); renderCategoryBoxes(); };
+    more.textContent = `＋ ${hiddenCount} more — expand`;
+    more.onclick = () => { cat.expanded = true; save(); renderTaskArea(); };
     box.appendChild(more);
   }
 
@@ -318,10 +345,21 @@ function taskRow(t, container, dateKey, cat) {
     r.textContent = recurLabel(t); r.title = 'Recurring';
     row.appendChild(r);
   }
-  const badge = el('span', 'weight-badge w' + t.weight);
-  badge.textContent = '×' + t.weight;
-  if (t.note) badge.title = t.note;
-  row.appendChild(badge);
+  // deliver-by sits next to the weight; today/overdue are called out
+  const due = dueDateOf(t);
+  const tk = todayKey();
+  const dueBadge = el('span', 'due-badge' + (due < tk ? ' overdue' : due === tk ? ' today' : ''));
+  dueBadge.textContent = due === tk ? 'today' : shortDate(due);
+  dueBadge.title = 'Deliver by ' + prettyDate(due);
+  row.appendChild(dueBadge);
+
+  // Routine is weightless by design — no score, no badge.
+  if (catHasWeight(cat.id)) {
+    const badge = el('span', 'weight-badge w' + t.weight);
+    badge.textContent = '×' + t.weight;
+    if (t.note) badge.title = t.note;
+    row.appendChild(badge);
+  }
 
   const edit = el('button', 'row-edit');
   edit.textContent = '✎'; edit.title = 'Edit';
@@ -333,6 +371,17 @@ function taskRow(t, container, dateKey, cat) {
   del.onclick = (e) => { e.stopPropagation(); deleteTask(t.id); };
   row.appendChild(del);
   return row;
+}
+
+function makeSortable(list, cat, dateKey) {
+  list.ondragover = (e) => {
+    e.preventDefault();
+    const dragging = list.querySelector('.task-row.dragging');
+    if (!dragging) return;
+    const after = dragAfterElement(list, e.clientY);
+    if (after == null) list.appendChild(dragging);
+    else list.insertBefore(dragging, after);
+  };
 }
 
 function dragAfterElement(container, y) {
@@ -460,6 +509,12 @@ function syncModalFields() {
   const recurring = $('#recurringChk').checked;
   const cat = getCat(modalCatId) || getCat('daily');
   const isWeeklyCat = cat.type === 'weekly';
+  // routine chores carry no weight, so hide the picker and its note
+  const weighted = catHasWeight(cat.id);
+  $('#weightPick').classList.toggle('hidden', !weighted);
+  $('#weightLabel').classList.toggle('hidden', !weighted);
+  $('#noteLabel').classList.toggle('hidden', !weighted);
+  $('#taskNote').classList.toggle('hidden', !weighted);
   // custom categories choose their cadence; weekly/daily categories are implied
   $('#cadenceWrap').classList.toggle('hidden', !(recurring && cat.type === 'custom'));
   const cadence = recurring
@@ -598,15 +653,15 @@ function setStartupLabel(on) {
   $('#startupToggle').textContent = '⏻ Launch at startup: ' + (on ? 'on' : 'off');
 }
 
-let currentPage = 'daily';
-const PAGES = ['daily', 'taskmaster', 'create', 'calendar', 'archives', 'settings'];
+let currentPage = 'taskmaster';
+const PAGES = ['taskmaster', 'create', 'calendar', 'archives', 'settings'];
 function showPage(page) {
   currentPage = page;
   PAGES.forEach((p) => $('#page-' + p).classList.toggle('hidden', p !== page));
   document.querySelectorAll('.nav-item').forEach((b) => b.classList.toggle('active', b.dataset.page === page));
   if (page === 'archives') renderArchive();
   if (page === 'calendar') renderCalendar();
-  if (page === 'taskmaster') renderTaskmaster();
+  if (page === 'taskmaster') renderTaskArea();
   if (page === 'create') { renderCatManager(); fillCategorySelect($('#cCategory'), 'daily', false); }
   if (page === 'settings') renderSettings();
 }

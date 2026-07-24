@@ -46,8 +46,17 @@ function addDays(key, n) {
   return todayKey(new Date(y, m - 1, d + n));
 }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+// Monday of the week containing `key`
+function mondayOf(key) { return addDays(key, -((weekdayOf(key) + 6) % 7)); }
+function weekDays(mondayKey) { return Array.from({ length: 7 }, (_, i) => addDays(mondayKey, i)); }
 
 /* ---------- defaults ---------- */
+// Selectable category colours (id -> label). Also used for swatches in the UI.
+const CAT_COLORS = [
+  ['purple', 'Purple'], ['neon', 'Green'], ['blue', 'Blue'], ['amber', 'Amber'],
+  ['pink', 'Pink'], ['teal', 'Teal'], ['red', 'Red'], ['gray', 'Grey']
+];
+
 const BUILTIN_CATEGORIES = [
   { id: 'weekly',  name: 'Weekly',  builtin: true, type: 'weekly',  color: 'neon',   widget: true, expanded: false, sort: 'manual', limit: 2 },
   { id: 'daily',   name: 'Daily',   builtin: true, type: 'daily',   color: 'purple', widget: true, expanded: false, sort: 'manual', limit: 3 },
@@ -64,6 +73,7 @@ function defaultState() {
     weeklyArchive: [],  // [{week, tasks:[snapshot]}]
     dayOrders: {},      // { 'YYYY-MM-DD': { taskId: index } } — per-day manual order
     settings: { showImport: true, showWeightNotes: true },
+    taskmasterView: 'categories',   // 'categories' (per-category boxes) | 'grouped' (one due-today box)
     lastDay: todayKey(),
     lastWeek: weekKey(),
     loggedDays: [],
@@ -95,6 +105,7 @@ function migrate(s) {
   if (!s.settings) s.settings = { showImport: true, showWeightNotes: true };
   if (typeof s.settings.showImport !== 'boolean') s.settings.showImport = true;
   if (typeof s.settings.showWeightNotes !== 'boolean') s.settings.showWeightNotes = true;
+  if (s.taskmasterView !== 'grouped') s.taskmasterView = 'categories';
 
   // --- fold the old v1 arrays into the unified task list (once) ---
   const today = s.lastDay || todayKey();
@@ -216,17 +227,24 @@ function sortInCat(list, cat, dateKey) {
 const sumWeight = (l) => l.reduce((a, t) => a + t.weight, 0);
 const sumDone = (l) => l.reduce((a, t) => a + (t.done ? t.weight : 0), 0);
 
-// daily bar counts daily + routine categories active today (custom = backlog, excluded)
+// Routine is deliberately weightless — those chores are tracked but never scored,
+// so they can't dilute the daily bar.
+function catHasWeight(catId) { return catType(catId) !== 'routine'; }
+
 function dailyTasksToday(dateKey = todayKey()) {
   return state.categories
     .filter((c) => c.type === 'daily' || c.type === 'routine')
     .flatMap((c) => catTasksFor(c.id, dateKey));
 }
+// only weighted categories drive the bar
+function scoredDailyTasks(dateKey = todayKey()) {
+  return dailyTasksToday(dateKey).filter((t) => catHasWeight(t.categoryId));
+}
 function weeklyTasksNow(dateKey = todayKey()) {
   return state.categories.filter((c) => c.type === 'weekly').flatMap((c) => catTasksFor(c.id, dateKey));
 }
 function dailyProgress() {
-  const l = dailyTasksToday();
+  const l = scoredDailyTasks();
   const total = sumWeight(l);
   return { total, done: sumDone(l), pct: total ? (sumDone(l) / total) * 100 : 0 };
 }

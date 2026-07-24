@@ -63,6 +63,7 @@ body {
 .dot.gray { background: var(--text-faint); }
 .dot.blue { background: #3b82f6; } .dot.amber { background: #f59e0b; }
 .dot.pink { background: #ec4899; } .dot.teal { background: #14b8a6; }
+.dot.red { background: #ef4444; }
 .pct { margin-left: auto; font-variant-numeric: tabular-nums; }
 .neon-text { color: #12a35c; } body.dark .neon-text { color: var(--neon); }
 .purple-text { color: var(--purple); }
@@ -82,6 +83,7 @@ body {
 .box.done.amber { background: #f59e0b; border-color: #f59e0b; }
 .box.done.pink { background: #ec4899; border-color: #ec4899; }
 .box.done.teal { background: #14b8a6; border-color: #14b8a6; }
+.box.done.red { background: #ef4444; border-color: #ef4444; }
 .box.done::after {
   content: "✓"; position: absolute; inset: 0; display: flex;
   align-items: center; justify-content: center; font-size: 9px; color: #fff; font-weight: 700;

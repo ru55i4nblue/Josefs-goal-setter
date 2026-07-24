@@ -34,10 +34,7 @@
     <aside class="sidebar">
       <div class="sidebar-title">Goal&nbsp;Setter</div>
       <nav class="nav">
-        <button class="nav-item active" data-page="daily">
-          <span class="nav-ico">◧</span> Daily
-        </button>
-        <button class="nav-item" data-page="taskmaster">
+        <button class="nav-item active" data-page="taskmaster">
           <span class="nav-ico">◈</span> Taskmaster
         </button>
         <button class="nav-item" data-page="create">
@@ -63,9 +60,18 @@
       <button id="themeToggle" class="sidebar-btn">🌙 Dark mode</button>
     </aside>
 
-    <!-- ===================== DAILY PAGE ===================== -->
-    <main id="page-daily" class="page page-today">
-      <section id="categoryCols" class="lists-col"></section>
+    <!-- ===================== TASKMASTER (main) ===================== -->
+    <main id="page-taskmaster" class="page page-today">
+      <section class="lists-col">
+        <div class="tm-toolbar">
+          <div class="view-switch">
+            <button id="viewCategories" class="view-btn active" data-view="categories">Categories</button>
+            <button id="viewGrouped" class="view-btn" data-view="grouped">Due date</button>
+          </div>
+          <button id="tmAddBtn" class="btn-primary btn-small">＋ New task</button>
+        </div>
+        <div id="categoryCols"></div>
+      </section>
 
       <!-- PROGRESS BARS: right third, vertical, weekly stacked on top of daily -->
       <section class="bars-col">
@@ -98,17 +104,6 @@
           </div>
         </div>
       </section>
-    </main>
-
-    <!-- ===================== TASKMASTER PAGE ===================== -->
-    <main id="page-taskmaster" class="page page-taskmaster hidden">
-      <div class="cal-header">
-        <h1 class="archive-title">Taskmaster</h1>
-        <button id="tmAddBtn" class="btn-primary">＋ New task</button>
-      </div>
-      <p class="cal-sub">Everything ahead of you, sorted by deliver-by date. Recurring tasks show
-        only their next uncompleted instance.</p>
-      <div id="taskmasterBody" class="taskmaster-body"></div>
     </main>
 
     <!-- ===================== CREATE PAGE ===================== -->
@@ -194,8 +189,13 @@
           ⤓ Export to Google Calendar
         </button>
       </div>
-      <p class="cal-sub">Last month · this month · next month. Click a day to see &amp; edit all its tasks (weekly tasks show on Mondays), or click a task to edit it directly.</p>
-      <div id="calMonths" class="cal-months"></div>
+      <div class="week-nav">
+        <button id="weekPrev" class="week-btn" title="Previous week">‹</button>
+        <button id="weekToday" class="week-btn week-today">Today</button>
+        <button id="weekNext" class="week-btn" title="Next week">›</button>
+        <span id="weekLabel" class="week-label"></span>
+      </div>
+      <div id="calWeek" class="cal-week"></div>
     </main>
 
     <!-- ===================== ARCHIVES PAGE ===================== -->
@@ -255,7 +255,7 @@
         <select id="taskCategory" class="text-input"></select>
       </div>
 
-      <label class="field-label">Weight</label>
+      <label id="weightLabel" class="field-label">Weight</label>
       <div id="weightPick" class="weight-pick weight-pick-5">
         <button type="button" data-w="1" class="w-btn active">1</button>
         <button type="button" data-w="2" class="w-btn">2</button>
@@ -264,7 +264,7 @@
         <button type="button" data-w="5" class="w-btn">5</button>
       </div>
 
-      <label class="field-label">Why this matters / consequences if skipped</label>
+      <label id="noteLabel" class="field-label">Why this matters / consequences if skipped</label>
       <textarea id="taskNote" class="text-area note-area"
         placeholder="Context for the weighting — why it needs doing, and what happens if it isn't."></textarea>
 

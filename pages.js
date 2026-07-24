@@ -5,9 +5,7 @@
 /* ============================================================
    Taskmaster — everything ahead, by deliver-by date
    ============================================================ */
-function renderTaskmaster() {
-  const body = $('#taskmasterBody');
-  body.innerHTML = '';
+function renderGroupedView(body) {
   const tk = todayKey();
 
   const rows = state.tasks
@@ -68,9 +66,11 @@ function tmSection(label, rows, urgent) {
     }
     row.appendChild(main);
 
-    const badge = el('span', 'weight-badge w' + t.weight);
-    badge.textContent = '×' + t.weight;
-    row.appendChild(badge);
+    if (catHasWeight(t.categoryId)) {
+      const badge = el('span', 'weight-badge w' + t.weight);
+      badge.textContent = '×' + t.weight;
+      row.appendChild(badge);
+    }
 
     const edit = el('button', 'row-edit');
     edit.textContent = '✎'; edit.title = 'Edit';
@@ -88,8 +88,41 @@ function renderCatManager() {
   const host = $('#catManager');
   if (!host) return;
   host.innerHTML = '';
-  state.categories.forEach((cat) => {
+  state.categories.forEach((cat, idx) => {
     const row = el('div', 'cat-row');
+
+    // --- reorder (order here drives the order of the boxes on Taskmaster) ---
+    const moves = el('div', 'cat-moves');
+    const mv = (label, delta, disabled) => {
+      const b = el('button', 'cat-move');
+      b.textContent = label; b.disabled = disabled;
+      b.title = delta < 0 ? 'Move up' : 'Move down';
+      b.onclick = () => {
+        const arr = state.categories;
+        const to = idx + delta;
+        if (to < 0 || to >= arr.length) return;
+        [arr[idx], arr[to]] = [arr[to], arr[idx]];
+        save(); render(); renderCatManager();
+      };
+      moves.appendChild(b);
+    };
+    mv('↑', -1, idx === 0);
+    mv('↓', 1, idx === state.categories.length - 1);
+    row.appendChild(moves);
+
+    // --- colour swatches ---
+    const swatches = el('div', 'cat-swatches');
+    CAT_COLORS.forEach(([id, label]) => {
+      const s = el('button', 'swatch ' + id + (cat.color === id ? ' active' : ''));
+      s.title = label;
+      s.onclick = () => {
+        cat.color = id;
+        [...swatches.children].forEach((x) => x.classList.toggle('active', x === s));
+        save(); render(); pushWidget();
+      };
+      swatches.appendChild(s);
+    });
+    row.appendChild(swatches);
 
     const name = el('input', 'rec-title');
     name.value = cat.name;
@@ -151,7 +184,7 @@ function addCategory(name) {
     toast('A category with that name already exists');
     return;
   }
-  const palette = ['blue', 'amber', 'pink', 'teal', 'purple', 'neon'];
+  const palette = CAT_COLORS.map(([id]) => id).filter((c) => c !== 'gray');
   state.categories.push({
     id: 'c_' + uid(), name: n, builtin: false, type: 'custom',
     color: palette[state.categories.length % palette.length],
@@ -235,8 +268,8 @@ function renderArchive() {
         <span>${escapeHtml(t.title)}</span>
         <span class="weight-badge w${t.weight}">×${t.weight}</span>
         <span class="arch-time">${escapeHtml(t.completedAt || '—')}</span>`;
-      const readd = el('button', 'arch-readd');
-      readd.textContent = '↩';
+      const readd = el('button', 'arch-readd btn-restore');
+      readd.textContent = '↩ Restore';
       readd.title = 'Re-add to today';
       readd.onclick = () => {
         addTask({ title: t.title, weight: t.weight, note: t.note || '',
@@ -267,8 +300,8 @@ function renderCustomArchive(catId, body) {
       <span>${escapeHtml(t.title)}</span>
       <span class="weight-badge w${t.weight}">×${t.weight}</span>
       <span class="arch-time">${escapeHtml(t.archivedAt || '—')}</span>`;
-    const restore = el('button', 'arch-readd');
-    restore.textContent = '↩';
+    const restore = el('button', 'arch-readd btn-restore');
+    restore.textContent = '↩ Restore';
     restore.title = 'Restore to ' + (cat ? cat.name : 'category');
     restore.onclick = () => {
       state.archive = state.archive.filter((x) => x.id !== t.id);
@@ -300,59 +333,64 @@ function tasksForDate(key) {
   return dailyTasksToday(key);
 }
 
+// Week the calendar is showing — always starts on the week containing today.
+let calWeekStart = mondayOf(todayKey());
+
 function renderCalendar() {
-  const wrap = $('#calMonths');
+  const wrap = $('#calWeek');
   wrap.innerHTML = '';
-  const now = new Date();
-  [-1, 0, 1].forEach((off) => wrap.appendChild(buildMonth(now.getFullYear(), now.getMonth() + off, off === 0)));
-}
-
-function buildMonth(y, mIdx, isCurrent) {
-  const first = new Date(y, mIdx, 1);
-  const year = first.getFullYear(), month = first.getMonth();
-  const sec = el('div', 'cal-month' + (isCurrent ? ' current' : ''));
-  const h = el('h2');
-  h.textContent = first.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-  sec.appendChild(h);
-
-  const grid = el('div', 'cal-grid');
-  ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach((d) => {
-    const dh = el('div', 'cal-dow'); dh.textContent = d; grid.appendChild(dh);
-  });
-  const startDow = (first.getDay() + 6) % 7;
-  for (let i = 0; i < startDow; i++) grid.appendChild(el('div', 'cal-cell empty'));
-
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
   const tk = todayKey();
-  for (let day = 1; day <= daysInMonth; day++) {
-    const key = `${year}-${pad(month + 1)}-${pad(day)}`;
-    const cell = el('div', 'cal-cell');
-    if (key === tk) cell.classList.add('today');
-    else if (key < tk) cell.classList.add('past');
-    const num = el('div', 'cal-daynum'); num.textContent = day; cell.appendChild(num);
+  const days = weekDays(calWeekStart);
+
+  const first = days[0], last = days[6];
+  const thisWeek = weekKeyFromKey(calWeekStart) === weekKey();
+  $('#weekLabel').textContent = `${shortDate(first)} – ${shortDate(last)}`
+    + (thisWeek ? ' · this week' : '');
+  $('#weekToday').classList.toggle('active', thisWeek);
+
+  days.forEach((key) => {
+    const col = el('div', 'week-day');
+    if (key === tk) col.classList.add('today');
+    else if (key < tk) col.classList.add('past');
+
+    const head = el('div', 'week-day-head');
+    head.innerHTML = `<span class="wd-name">${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][weekdayOf(key)]}</span>`
+      + `<span class="wd-num">${Number(key.split('-')[2])}</span>`;
+    col.appendChild(head);
 
     const weekly = weekdayOf(key) === 1 ? weeklyTasksNow(key) : [];
-    const pills = weekly.map((t) => ({ t, weekly: true })).concat(tasksForDate(key).map((t) => ({ t, weekly: false })));
-    pills.slice(0, 3).forEach(({ t, weekly: isW }) => {
+    const items = weekly.map((t) => ({ t, weekly: true }))
+      .concat(tasksForDate(key).map((t) => ({ t, weekly: false })));
+
+    if (!items.length) {
+      const e = el('div', 'week-empty');
+      e.textContent = '—';
+      col.appendChild(e);
+    }
+    items.forEach(({ t, weekly: isW }) => {
       const p = el('div', 'cal-pill' + (isW ? ' weekly' : (t.weight >= 3 ? ' w-hi' : ''))
         + (occurrenceDone(t, key) ? ' done' : ''));
       p.textContent = t.title;
-      p.title = `${t.title} (×${t.weight})`;
+      p.title = `${t.title}${catHasWeight(t.categoryId) ? ` (×${t.weight})` : ''}`;
       if (key >= tk && t.id) {
         p.classList.add('editable');
         p.onclick = (e) => { e.stopPropagation(); openEditModal(t.id); };
       }
-      cell.appendChild(p);
+      col.appendChild(p);
     });
-    if (pills.length > 3) {
-      const more = el('div', 'cal-more'); more.textContent = `+${pills.length - 3} more`; cell.appendChild(more);
-    }
-    cell.onclick = () => openDayModal(key);
-    grid.appendChild(cell);
-  }
-  sec.appendChild(grid);
-  return sec;
+
+    const add = el('button', 'week-add');
+    add.textContent = '＋';
+    add.title = 'Open this day';
+    add.onclick = (e) => { e.stopPropagation(); openDayModal(key); };
+    col.appendChild(add);
+
+    col.onclick = () => openDayModal(key);
+    wrap.appendChild(col);
+  });
 }
+function shiftWeek(n) { calWeekStart = addDays(calWeekStart, n * 7); renderCalendar(); }
+function calendarToToday() { calWeekStart = mondayOf(todayKey()); renderCalendar(); }
 
 /* ---------- day view modal ---------- */
 let dayModalKey = null;
@@ -550,7 +588,6 @@ function refreshFullUI() {
   render();
   if (currentPage === 'calendar') renderCalendar();
   if (currentPage === 'archives') renderArchive();
-  if (currentPage === 'taskmaster') renderTaskmaster();
   if (currentPage === 'create') renderCatManager();
 }
 function onRemoteState(remote) {
@@ -709,6 +746,14 @@ function wire() {
 
   /* ---- taskmaster ---- */
   $('#tmAddBtn').onclick = () => openModal({ categoryId: 'daily' });
+  document.querySelectorAll('.view-btn').forEach((b) => {
+    b.onclick = () => { state.taskmasterView = b.dataset.view; save(); renderTaskArea(); };
+  });
+
+  /* ---- calendar week nav ---- */
+  $('#weekPrev').onclick = () => shiftWeek(-1);
+  $('#weekNext').onclick = () => shiftWeek(1);
+  $('#weekToday').onclick = calendarToToday;
 
   /* ---- import ---- */
   $('#importCancel').onclick = () => $('#importModal').classList.add('hidden');

@@ -523,6 +523,43 @@ body.dark .checkbox.neon.checked::after { color: #08130c; }
 }
 .cat-more-btn:hover { background: var(--hover); color: var(--purple); }
 
+/* ===================== TASKMASTER TOOLBAR / VIEW SWITCH ===================== */
+.tm-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-bottom: 4px;
+}
+.view-switch {
+  display: inline-flex; background: var(--track);
+  border-radius: 8px; padding: 2px;
+}
+.view-btn {
+  background: none; border: none; cursor: pointer; font-family: inherit;
+  font-size: 12.5px; font-weight: 600; color: var(--text-soft);
+  padding: 5px 13px; border-radius: 6px;
+}
+.view-btn.active { background: var(--bg); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.1); }
+.btn-small { padding: 6px 12px !important; font-size: 12.5px !important; }
+
+/* due-today callout inside each category box */
+.due-today-box {
+  border: 1px solid var(--purple); border-radius: 8px;
+  background: rgba(139, 92, 246, .07);
+  padding: 6px 8px 8px; margin-bottom: 6px;
+}
+.due-today-head {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em;
+  font-weight: 700; color: var(--purple); padding: 2px 4px 5px;
+}
+.upcoming-list { opacity: .92; }
+
+.due-badge {
+  flex-shrink: 0; font-size: 10.5px; font-variant-numeric: tabular-nums;
+  color: var(--text-faint); padding: 2px 7px; border-radius: 999px;
+  background: var(--track);
+}
+.due-badge.today { color: var(--purple); background: rgba(139,92,246,.15); font-weight: 700; }
+.due-badge.overdue { color: #e0584b; background: rgba(224,88,75,.14); font-weight: 700; }
+
 /* ===================== TASKMASTER ===================== */
 .page-taskmaster { padding: 26px 36px; overflow-y: auto; }
 .taskmaster-body { display: flex; flex-direction: column; gap: 22px; }
@@ -550,6 +587,90 @@ body.dark .checkbox.neon.checked::after { color: #08130c; }
 .tm-due { color: var(--text-faint); margin-left: auto; }
 .tm-row .row-edit { opacity: 0; }
 .tm-row:hover .row-edit { opacity: 1; }
+
+/* ===================== WEEK CALENDAR ===================== */
+.week-nav { display: flex; align-items: center; gap: 6px; margin: 4px 0 18px; }
+.week-btn {
+  background: var(--bg-elev); border: 1px solid var(--border-strong); cursor: pointer;
+  font-family: inherit; font-size: 14px; color: var(--text-soft);
+  min-width: 32px; height: 30px; border-radius: 7px; padding: 0 10px;
+}
+.week-btn:hover { border-color: var(--purple); color: var(--text); }
+.week-today { font-size: 12.5px; font-weight: 600; }
+.week-today.active { background: var(--purple); color: #fff; border-color: var(--purple); }
+.week-label { font-size: 13px; color: var(--text-faint); margin-left: 6px; }
+
+.cal-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+.week-day {
+  min-height: 190px; border: 1px solid var(--border); border-radius: 9px;
+  background: var(--bg-elev); padding: 8px 8px 6px; cursor: pointer;
+  display: flex; flex-direction: column; gap: 4px;
+  transition: border-color .15s, transform .1s;
+}
+.week-day:hover { border-color: var(--purple); transform: translateY(-1px); }
+.week-day.today { border-color: var(--purple); box-shadow: 0 0 0 1px var(--purple); }
+.week-day.past { opacity: .62; }
+.week-day-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding-bottom: 5px; margin-bottom: 2px; border-bottom: 1px solid var(--border);
+}
+.wd-name {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em;
+  font-weight: 700; color: var(--text-faint);
+}
+.wd-num { font-size: 15px; font-weight: 700; color: var(--text-soft); }
+.week-day.today .wd-name, .week-day.today .wd-num { color: var(--purple); }
+.week-empty { font-size: 11px; color: var(--text-faint); text-align: center; padding: 8px 0; }
+.week-add {
+  margin-top: auto; background: none; border: none; cursor: pointer;
+  color: var(--text-faint); font-size: 13px; padding: 3px; border-radius: 5px;
+  opacity: 0; transition: opacity .15s;
+}
+.week-day:hover .week-add { opacity: 1; }
+.week-add:hover { background: var(--hover); color: var(--purple); }
+
+/* ===================== ARCHIVE RESTORE BUTTON ===================== */
+.btn-restore {
+  opacity: 1 !important;
+  background: var(--bg) !important;
+  border: 1px solid var(--purple) !important;
+  color: var(--purple) !important;
+  font-family: inherit; font-size: 11.5px; font-weight: 600;
+  padding: 4px 11px !important; border-radius: 999px !important;
+  white-space: nowrap; margin-left: 10px;
+}
+.btn-restore:hover { background: var(--purple) !important; color: #fff !important; }
+
+/* ===================== CATEGORY MANAGER EXTRAS ===================== */
+.cat-moves { display: flex; flex-direction: column; gap: 1px; }
+.cat-move {
+  background: none; border: 1px solid var(--border-strong); cursor: pointer;
+  color: var(--text-soft); font-size: 9px; line-height: 1;
+  width: 20px; height: 15px; border-radius: 4px; padding: 0;
+}
+.cat-move:hover:not(:disabled) { border-color: var(--purple); color: var(--purple); }
+.cat-move:disabled { opacity: .3; cursor: default; }
+
+.cat-swatches { display: flex; gap: 3px; }
+.swatch {
+  width: 16px; height: 16px; border-radius: 50%; cursor: pointer;
+  border: 2px solid transparent; padding: 0;
+}
+.swatch.active { border-color: var(--text); transform: scale(1.15); }
+.swatch.purple { background: #8b5cf6; } .swatch.neon { background: #2bff88; }
+.swatch.blue { background: #3b82f6; }   .swatch.amber { background: #f59e0b; }
+.swatch.pink { background: #ec4899; }   .swatch.teal { background: #14b8a6; }
+.swatch.red { background: #ef4444; }    .swatch.gray { background: #9b9a97; }
+
+.cat-dot.red { color: #ef4444; }
+.checkbox.red.checked { background: #ef4444; border-color: #ef4444; }
+.tm-cat.red { color: #ef4444; }
+
+@media (max-width: 760px) {
+  .cal-week { grid-template-columns: 1fr; }
+  .week-day { min-height: 0; }
+  .week-add { opacity: 1; }
+}
 
 /* ===================== CREATE / SETTINGS ===================== */
 .page-create, .page-settings { padding: 26px 36px; overflow-y: auto; }

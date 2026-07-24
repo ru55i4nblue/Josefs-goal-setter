@@ -13,6 +13,18 @@ matching categories with their recurrence and dates intact.
 
 ### Added
 
+- **Taskmaster is now the main screen**, with a toggle between two layouts:
+  **Categories** (a box per category, each with its due-today tasks called out in a
+  highlighted panel) and **Due date** (everything pooled into one due-today box,
+  then grouped by date).
+- **Deliver-by dates shown on every task row**, beside the weight, with today and
+  overdue called out.
+- **Weekly calendar** that opens on the current week, with previous / next / Today
+  navigation, replacing the three-month grid.
+- **Category reordering** (↑ ↓ in the category manager) — the order there is the
+  order of the boxes on Taskmaster.
+- **Category colour coding** from an eight-colour palette, applied to the category
+  dot, its checkboxes and the widget.
 - **Custom categories.** Create your own task groups alongside Weekly, Daily and
   Routine. Their tasks persist until completed or deleted (they don't expire at
   the end of a day), and completing one files it into that category's **own
@@ -45,9 +57,14 @@ matching categories with their recurrence and dates intact.
 
 - **Weights now run 1–5** (previously 1–3), giving finer control over how much a
   task moves the bar.
-- The **Today** tab is now called **Daily**.
+- **Routine tasks are no longer weighted.** They're tracked and tickable, but carry
+  no score and don't affect the daily bar, so everyday chores can't dilute it.
+- The separate **Today / Daily tab has been removed** — its category view now lives
+  inside Taskmaster.
 - The main screen renders **one box per category** instead of fixed Weekly and
   Daily sections.
+- **Restore buttons in the archives** are now labelled and always visible rather
+  than an icon that appeared on hover.
 - The daily markdown log is grouped by category and includes weight notes.
 - Internals split into `model.js` (data), `pages.js` (secondary pages) and
   `renderer.js` (core rendering).

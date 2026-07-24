@@ -1,0 +1,792 @@
+/* ============================================================
+   Goal Setter — secondary pages, modals, exports, sync, wiring
+   ============================================================ */
+
+/* ============================================================
+   Taskmaster — everything ahead, by deliver-by date
+   ============================================================ */
+function renderTaskmaster() {
+  const body = $('#taskmasterBody');
+  body.innerHTML = '';
+  const tk = todayKey();
+
+  const rows = state.tasks
+    .filter((t) => !(t.done && !t.recurring))
+    .map((t) => ({ t, due: dueDateOf(t) }))
+    .filter(({ t, due }) => !(t.recurring && t.done && due === tk));
+
+  if (!rows.length) {
+    body.innerHTML = '<div class="empty-hint">Nothing scheduled. Add tasks from the Create page.</div>';
+    return;
+  }
+
+  const dueToday = rows.filter((r) => r.due <= tk).sort((a, b) => b.t.weight - a.t.weight);
+  const later = rows.filter((r) => r.due > tk).sort((a, b) => a.due.localeCompare(b.due) || b.t.weight - a.t.weight);
+
+  if (dueToday.length) {
+    body.appendChild(tmSection('Due today', dueToday, true));
+  }
+  // group the rest by their deliver-by date
+  const groups = new Map();
+  later.forEach((r) => {
+    if (!groups.has(r.due)) groups.set(r.due, []);
+    groups.get(r.due).push(r);
+  });
+  [...groups.keys()].sort().forEach((date) => {
+    const days = Math.round((new Date(date) - new Date(tk)) / 864e5);
+    const label = `${prettyDate(date)} · in ${days} day${days === 1 ? '' : 's'}`;
+    body.appendChild(tmSection(label, groups.get(date), false));
+  });
+}
+
+function tmSection(label, rows, urgent) {
+  const wrap = el('div', 'tm-section' + (urgent ? ' urgent' : ''));
+  const head = el('div', 'tm-head');
+  head.innerHTML = `<span>${escapeHtml(label)}</span><span class="tm-count">${rows.length}</span>`;
+  wrap.appendChild(head);
+  rows.forEach(({ t, due }) => {
+    const cat = getCat(t.categoryId) || { name: '?', color: 'gray' };
+    const row = el('div', 'tm-row' + (t.done ? ' done' : ''));
+
+    const box = el('div', `checkbox ${cat.color}` + (t.done ? ' checked' : ''));
+    box.onclick = () => toggleTask(t.id);
+    row.appendChild(box);
+
+    const main = el('div', 'task-main');
+    const name = el('div', 'task-name');
+    name.textContent = t.title;
+    main.appendChild(name);
+    const meta = el('div', 'tm-meta');
+    meta.innerHTML = `<span class="tm-cat ${cat.color}">${escapeHtml(cat.name)}</span>`
+      + (t.recurring ? `<span class="recur-badge">${escapeHtml(recurLabel(t))}</span>` : '')
+      + `<span class="tm-due">${escapeHtml(shortDate(due))}</span>`;
+    main.appendChild(meta);
+    if (t.note && state.settings.showWeightNotes) {
+      const note = el('div', 'task-note');
+      note.textContent = t.note;
+      main.appendChild(note);
+    }
+    row.appendChild(main);
+
+    const badge = el('span', 'weight-badge w' + t.weight);
+    badge.textContent = '×' + t.weight;
+    row.appendChild(badge);
+
+    const edit = el('button', 'row-edit');
+    edit.textContent = '✎'; edit.title = 'Edit';
+    edit.onclick = () => openEditModal(t.id);
+    row.appendChild(edit);
+    wrap.appendChild(row);
+  });
+  return wrap;
+}
+
+/* ============================================================
+   Create page — category manager
+   ============================================================ */
+function renderCatManager() {
+  const host = $('#catManager');
+  if (!host) return;
+  host.innerHTML = '';
+  state.categories.forEach((cat) => {
+    const row = el('div', 'cat-row');
+
+    const name = el('input', 'rec-title');
+    name.value = cat.name;
+    name.disabled = !!cat.builtin;
+    name.title = cat.builtin ? 'Built-in category — name is fixed' : 'Rename';
+    name.onchange = () => {
+      const v = name.value.trim();
+      if (v) { cat.name = v; save(); render(); renderCatManager(); } else name.value = cat.name;
+    };
+    row.appendChild(name);
+
+    const type = el('span', 'cat-type');
+    type.textContent = cat.builtin ? cat.type : 'persistent';
+    row.appendChild(type);
+
+    const widget = el('button', 'rec-routine' + (cat.widget ? ' active' : ''));
+    widget.textContent = cat.widget ? '✓ Widget' : 'Widget';
+    widget.title = 'Show this category on the floating widget';
+    widget.onclick = () => {
+      cat.widget = !cat.widget;
+      widget.classList.toggle('active', cat.widget);
+      widget.textContent = cat.widget ? '✓ Widget' : 'Widget';
+      save(); pushWidget(); renderSettings();
+    };
+    row.appendChild(widget);
+
+    const limitWrap = el('label', 'cat-limit');
+    limitWrap.innerHTML = '<span>show</span>';
+    const limit = el('input');
+    limit.type = 'number'; limit.min = '1'; limit.max = '20'; limit.value = cat.limit || 3;
+    limit.onchange = () => {
+      cat.limit = Math.max(1, Math.min(20, Number(limit.value) || 3));
+      limit.value = cat.limit; save(); render();
+    };
+    limitWrap.appendChild(limit);
+    row.appendChild(limitWrap);
+
+    if (!cat.builtin) {
+      const del = el('button', 'rec-del');
+      del.textContent = '✕';
+      del.title = 'Delete category (its tasks move to Daily)';
+      del.onclick = () => {
+        const moved = tasksOf(cat.id).length;
+        state.tasks.forEach((t) => { if (t.categoryId === cat.id) t.categoryId = 'daily'; });
+        state.categories = state.categories.filter((c) => c.id !== cat.id);
+        save(); render(); renderCatManager();
+        toast(`Deleted “${cat.name}”${moved ? ` · ${moved} task${moved === 1 ? '' : 's'} moved to Daily` : ''}`);
+      };
+      row.appendChild(del);
+    }
+    host.appendChild(row);
+  });
+}
+
+function addCategory(name) {
+  const n = (name || '').trim();
+  if (!n) return;
+  if (state.categories.some((c) => c.name.toLowerCase() === n.toLowerCase())) {
+    toast('A category with that name already exists');
+    return;
+  }
+  const palette = ['blue', 'amber', 'pink', 'teal', 'purple', 'neon'];
+  state.categories.push({
+    id: 'c_' + uid(), name: n, builtin: false, type: 'custom',
+    color: palette[state.categories.length % palette.length],
+    widget: false, expanded: false, sort: 'manual', limit: 3
+  });
+  save(); render(); renderCatManager();
+  fillCategorySelect($('#cCategory'), 'daily', false);
+  toast(`Category “${n}” created`);
+}
+
+/* ============================================================
+   Settings page
+   ============================================================ */
+function renderSettings() {
+  $('#setShowImport').checked = !!state.settings.showImport;
+  $('#setShowWeightNotes').checked = !!state.settings.showWeightNotes;
+  const host = $('#widgetCatList');
+  host.innerHTML = '';
+  state.categories.forEach((c) => {
+    const l = el('label', 'check-row');
+    const cb = el('input');
+    cb.type = 'checkbox'; cb.checked = !!c.widget;
+    cb.onchange = () => { c.widget = cb.checked; save(); pushWidget(); renderCatManager(); };
+    const s = el('span');
+    s.textContent = c.name;
+    l.appendChild(cb); l.appendChild(s);
+    host.appendChild(l);
+  });
+}
+
+/* ============================================================
+   Archives — daily, weekly, and one tab per custom category
+   ============================================================ */
+let archiveTab = 'daily';
+function archiveTabForCat(cat) {
+  if (cat.type === 'weekly') return 'weekly';
+  if (cat.type === 'custom') return 'cat:' + cat.id;
+  return 'daily';
+}
+function setArchiveTab(tab) { archiveTab = tab; renderArchive(); }
+
+function renderArchive() {
+  const tabs = $('#archiveTabs');
+  tabs.innerHTML = '';
+  const defs = [
+    { id: 'daily', label: 'Daily (7 days)' },
+    { id: 'weekly', label: 'Weekly (4 weeks)' }
+  ].concat(state.categories.filter((c) => c.type === 'custom').map((c) => ({ id: 'cat:' + c.id, label: c.name })));
+
+  defs.forEach((d) => {
+    const b = el('button', 'archive-tab' + (archiveTab === d.id ? ' active' : ''));
+    b.textContent = d.label;
+    b.onclick = () => setArchiveTab(d.id);
+    tabs.appendChild(b);
+  });
+
+  const body = $('#archiveBody');
+  body.innerHTML = '';
+
+  if (archiveTab.startsWith('cat:')) return renderCustomArchive(archiveTab.slice(4), body);
+
+  const data = archiveTab === 'daily' ? state.dailyArchive : state.weeklyArchive;
+  if (!data.length) {
+    body.innerHTML = `<div class="empty-hint">No archived ${archiveTab} records yet — they appear automatically after a ${archiveTab === 'daily' ? 'day' : 'week'} rolls over.</div>`;
+    return;
+  }
+  data.forEach((entry) => {
+    const total = entry.tasks.reduce((a, t) => a + t.weight, 0);
+    const done = entry.tasks.reduce((a, t) => a + (t.done ? t.weight : 0), 0);
+    const pct = total ? Math.round((done / total) * 100) : 0;
+    const color = archiveTab === 'daily' ? 'var(--purple)' : 'var(--neon)';
+    const card = el('div', 'archive-card');
+    card.innerHTML = `
+      <h3>${escapeHtml(archiveTab === 'daily' ? prettyDate(entry.date) : entry.week)}</h3>
+      <div class="arch-sub">${done}/${total} weight completed · ${pct}%</div>
+      <div class="arch-bar"><div style="width:${pct}%;background:${color}"></div></div>`;
+    entry.tasks.forEach((t) => {
+      const row = el('div', 'arch-task');
+      row.innerHTML = `
+        <span class="${t.done ? 'ok' : 'no'}">${t.done ? '✓' : '○'}</span>
+        <span>${escapeHtml(t.title)}</span>
+        <span class="weight-badge w${t.weight}">×${t.weight}</span>
+        <span class="arch-time">${escapeHtml(t.completedAt || '—')}</span>`;
+      const readd = el('button', 'arch-readd');
+      readd.textContent = '↩';
+      readd.title = 'Re-add to today';
+      readd.onclick = () => {
+        addTask({ title: t.title, weight: t.weight, note: t.note || '',
+          categoryId: archiveTab === 'daily' ? 'daily' : 'weekly', deliverBy: todayKey() });
+        toast(`Re-added “${t.title}”`);
+      };
+      row.appendChild(readd);
+      card.appendChild(row);
+    });
+    body.appendChild(card);
+  });
+}
+
+function renderCustomArchive(catId, body) {
+  const cat = getCat(catId);
+  const items = state.archive.filter((t) => t.categoryId === catId);
+  if (!items.length) {
+    body.innerHTML = `<div class="empty-hint">Nothing archived from ${escapeHtml(cat ? cat.name : 'this category')} yet. Completing a task here files it away.</div>`;
+    return;
+  }
+  const card = el('div', 'archive-card');
+  card.innerHTML = `<h3>${escapeHtml(cat ? cat.name : 'Archive')}</h3>
+    <div class="arch-sub">${items.length} completed task${items.length === 1 ? '' : 's'}</div>`;
+  items.forEach((t) => {
+    const row = el('div', 'arch-task');
+    row.innerHTML = `
+      <span class="ok">✓</span>
+      <span>${escapeHtml(t.title)}</span>
+      <span class="weight-badge w${t.weight}">×${t.weight}</span>
+      <span class="arch-time">${escapeHtml(t.archivedAt || '—')}</span>`;
+    const restore = el('button', 'arch-readd');
+    restore.textContent = '↩';
+    restore.title = 'Restore to ' + (cat ? cat.name : 'category');
+    restore.onclick = () => {
+      state.archive = state.archive.filter((x) => x.id !== t.id);
+      const { archivedAt, ...task } = t;
+      task.done = false; task.completedAt = null;
+      state.tasks.push(task);
+      afterChange();
+      toast(`Restored “${t.title}”`);
+    };
+    row.appendChild(restore);
+    card.appendChild(row);
+  });
+  body.appendChild(card);
+}
+
+/* ============================================================
+   Calendar
+   ============================================================ */
+function occurrenceDone(t, key) {
+  if (!t.recurring) return t.done;
+  const current = t.cadence === 'weekly'
+    ? weekKeyFromKey(key) === weekKey()
+    : key === todayKey();
+  return current ? t.done : false;
+}
+function tasksForDate(key) {
+  const arch = state.dailyArchive.find((a) => a.date === key);
+  if (arch) return arch.tasks;
+  return dailyTasksToday(key);
+}
+
+function renderCalendar() {
+  const wrap = $('#calMonths');
+  wrap.innerHTML = '';
+  const now = new Date();
+  [-1, 0, 1].forEach((off) => wrap.appendChild(buildMonth(now.getFullYear(), now.getMonth() + off, off === 0)));
+}
+
+function buildMonth(y, mIdx, isCurrent) {
+  const first = new Date(y, mIdx, 1);
+  const year = first.getFullYear(), month = first.getMonth();
+  const sec = el('div', 'cal-month' + (isCurrent ? ' current' : ''));
+  const h = el('h2');
+  h.textContent = first.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  sec.appendChild(h);
+
+  const grid = el('div', 'cal-grid');
+  ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach((d) => {
+    const dh = el('div', 'cal-dow'); dh.textContent = d; grid.appendChild(dh);
+  });
+  const startDow = (first.getDay() + 6) % 7;
+  for (let i = 0; i < startDow; i++) grid.appendChild(el('div', 'cal-cell empty'));
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const tk = todayKey();
+  for (let day = 1; day <= daysInMonth; day++) {
+    const key = `${year}-${pad(month + 1)}-${pad(day)}`;
+    const cell = el('div', 'cal-cell');
+    if (key === tk) cell.classList.add('today');
+    else if (key < tk) cell.classList.add('past');
+    const num = el('div', 'cal-daynum'); num.textContent = day; cell.appendChild(num);
+
+    const weekly = weekdayOf(key) === 1 ? weeklyTasksNow(key) : [];
+    const pills = weekly.map((t) => ({ t, weekly: true })).concat(tasksForDate(key).map((t) => ({ t, weekly: false })));
+    pills.slice(0, 3).forEach(({ t, weekly: isW }) => {
+      const p = el('div', 'cal-pill' + (isW ? ' weekly' : (t.weight >= 3 ? ' w-hi' : ''))
+        + (occurrenceDone(t, key) ? ' done' : ''));
+      p.textContent = t.title;
+      p.title = `${t.title} (×${t.weight})`;
+      if (key >= tk && t.id) {
+        p.classList.add('editable');
+        p.onclick = (e) => { e.stopPropagation(); openEditModal(t.id); };
+      }
+      cell.appendChild(p);
+    });
+    if (pills.length > 3) {
+      const more = el('div', 'cal-more'); more.textContent = `+${pills.length - 3} more`; cell.appendChild(more);
+    }
+    cell.onclick = () => openDayModal(key);
+    grid.appendChild(cell);
+  }
+  sec.appendChild(grid);
+  return sec;
+}
+
+/* ---------- day view modal ---------- */
+let dayModalKey = null;
+function openDayModal(key) {
+  dayModalKey = key;
+  $('#dayModalTitle').textContent = prettyDate(key) + (key < todayKey() ? ' · archived' : '');
+  $('#dayModalAdd').classList.toggle('hidden', key < todayKey());
+  renderDayModal();
+  $('#dayModal').classList.remove('hidden');
+}
+
+function renderDayModal() {
+  const key = dayModalKey, tk = todayKey();
+  const body = $('#dayModalBody');
+  body.innerHTML = '';
+  const editable = key >= tk;
+
+  const weekly = weeklyTasksNow(key);
+  if (weekly.length) {
+    const wk = weekKeyFromKey(key);
+    body.appendChild(daySection(wk === weekKey() ? 'Weekly · this week' : 'Weekly · ' + wk));
+    body.appendChild(dayList(weekly, editable, key));
+  }
+  body.appendChild(daySection('Daily'));
+  const daily = tasksForDate(key);
+  if (!daily.length) {
+    const e = el('div', 'empty-hint subgroup-empty');
+    e.textContent = 'no tasks on this day';
+    body.appendChild(e);
+  } else {
+    body.appendChild(dayList(daily, editable, key));
+  }
+}
+function daySection(label) {
+  const h = el('div', 'task-subgroup'); h.textContent = label; return h;
+}
+function dayList(tasks, editable, key) {
+  const list = el('div', 'day-drag-list');
+  const sorted = tasks.slice().sort((a, b) =>
+    (occurrenceDone(a, key) ? 1 : 0) - (occurrenceDone(b, key) ? 1 : 0) || orderOf(a, key) - orderOf(b, key));
+  sorted.forEach((t) => list.appendChild(dayTaskRow(t, editable, key, list)));
+  list.ondragover = (e) => {
+    e.preventDefault();
+    const dragging = list.querySelector('.day-task.dragging');
+    if (!dragging) return;
+    const rows = [...list.querySelectorAll('.day-task:not(.dragging)')];
+    let closest = { offset: -Infinity, el: null };
+    for (const r of rows) {
+      const b = r.getBoundingClientRect();
+      const off = e.clientY - b.top - b.height / 2;
+      if (off < 0 && off > closest.offset) closest = { offset: off, el: r };
+    }
+    if (closest.el == null) list.appendChild(dragging);
+    else list.insertBefore(dragging, closest.el);
+  };
+  return list;
+}
+function dayTaskRow(t, editable, key, container) {
+  const done = occurrenceDone(t, key);
+  const row = el('div', 'day-task' + (done ? ' done' : ''));
+  row.dataset.id = t.id;
+  if (editable && t.id) {
+    row.draggable = true;
+    row.ondragstart = () => row.classList.add('dragging');
+    row.ondragend = () => {
+      row.classList.remove('dragging');
+      const ordered = [...container.querySelectorAll('.day-task')]
+        .map((r) => findTask(r.dataset.id)).filter(Boolean);
+      setDayOrder(ordered, key);
+      save(); render(); renderDayModal();
+    };
+    const handle = el('span', 'drag-handle');
+    handle.textContent = '⠿'; handle.title = 'Drag to reorder';
+    row.appendChild(handle);
+  }
+  const mark = el('span', done ? 'ok' : 'no');
+  mark.textContent = done ? '✓' : '○';
+  row.appendChild(mark);
+  const name = el('span', 'day-task-name');
+  name.textContent = t.title;
+  row.appendChild(name);
+  if (t.recurring) {
+    const r = el('span', 'recur-badge'); r.textContent = recurLabel(t); row.appendChild(r);
+  }
+  const badge = el('span', 'weight-badge w' + t.weight);
+  badge.textContent = '×' + t.weight;
+  row.appendChild(badge);
+  if (editable && t.id) {
+    const edit = el('button', 'row-edit');
+    edit.textContent = '✎'; edit.title = 'Edit';
+    edit.onclick = () => { $('#dayModal').classList.add('hidden'); openEditModal(t.id); };
+    const del = el('button', 'row-del');
+    del.textContent = '✕'; del.title = 'Delete';
+    del.onclick = () => { deleteTask(t.id); renderDayModal(); };
+    row.appendChild(edit); row.appendChild(del);
+  }
+  return row;
+}
+
+/* ============================================================
+   Import modal
+   ============================================================ */
+let importCatId = 'daily';
+function openImport(catId) {
+  importCatId = catId || 'daily';
+  $('#importText').value = '';
+  $('#importRecurring').checked = false;
+  $('#importModal').classList.remove('hidden');
+  setTimeout(() => $('#importText').focus(), 30);
+}
+
+/* ============================================================
+   Daily markdown log (desktop only)
+   ============================================================ */
+function buildLogMarkdown() {
+  const date = todayKey();
+  const lines = [`# Goal Setter log — ${prettyDate(date)}`, ''];
+  state.categories.forEach((cat) => {
+    const tasks = catTasksFor(cat.id, date);
+    lines.push(`## ${cat.name}`);
+    if (!tasks.length) { lines.push('_No tasks set._', ''); return; }
+    const total = sumWeight(tasks), done = sumDone(tasks);
+    lines.push(`Completion: **${done}/${total} weight** (${total ? Math.round(done / total * 100) : 0}%)`, '');
+    lines.push('| Task | Weight | Done | Completed at | Why it matters |', '| --- | --- | --- | --- | --- |');
+    tasks.forEach((t) => {
+      lines.push(`| ${t.title} | ${t.weight} | ${t.done ? '✅' : '⬜'} | ${t.completedAt || '—'} | ${(t.note || '').replace(/\|/g, '\\|') || '—'} |`);
+    });
+    lines.push('');
+  });
+  return lines.join('\n');
+}
+async function exportLog(auto = false) {
+  const date = todayKey();
+  const filename = `goal-log-${date}.md`;
+  try {
+    await window.goalAPI.writeLog(filename, buildLogMarkdown());
+    if (!state.loggedDays.includes(date)) { state.loggedDays.push(date); save(); }
+    toast(auto ? `Auto-saved log → ${filename}` : `Saved ${filename}`);
+  } catch (e) { toast('Could not write log: ' + e.message); }
+}
+function scheduleLogCheck() {
+  const check = () => {
+    if (!window.goalAPI) return;
+    const d = new Date(), date = todayKey(d);
+    const [h, m] = (state.logTime || '22:00').split(':').map(Number);
+    if (d.getHours() * 60 + d.getMinutes() >= h * 60 + m && !state.loggedDays.includes(date)) exportLog(true);
+  };
+  check();
+  setInterval(check, 60 * 1000);
+}
+
+/* ============================================================
+   Google Calendar (.ics) export — weight >= 2
+   ============================================================ */
+const ICS_BYDAY = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
+const icsEsc = (s) => String(s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+function buildIcs() {
+  const stamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Goal Setter//EN', 'CALSCALE:GREGORIAN'];
+  let count = 0;
+  state.tasks.filter((t) => t.weight >= 2).forEach((t) => {
+    count++;
+    const start = dueDateOf(t).replace(/-/g, '');
+    const end = addDays(dueDateOf(t), 1).replace(/-/g, '');
+    lines.push('BEGIN:VEVENT', `UID:${t.id}@goalsetter`, `DTSTAMP:${stamp}`,
+      `DTSTART;VALUE=DATE:${start}`, `DTEND;VALUE=DATE:${end}`,
+      `SUMMARY:${icsEsc(t.title + ' (×' + t.weight + ')')}`);
+    if (t.note) lines.push(`DESCRIPTION:${icsEsc(t.note)}`);
+    if (t.recurring) {
+      if (t.cadence === 'weekly') lines.push('RRULE:FREQ=WEEKLY');
+      else if (!t.days.length) lines.push('RRULE:FREQ=DAILY');
+      else lines.push(`RRULE:FREQ=WEEKLY;BYDAY=${t.days.map((d) => ICS_BYDAY[d]).join(',')}`);
+    }
+    lines.push('END:VEVENT');
+  });
+  lines.push('END:VCALENDAR');
+  return { ics: lines.join('\r\n'), count };
+}
+async function exportToGoogleCalendar() {
+  const { ics, count } = buildIcs();
+  if (!count) { toast('No weight ≥ 2 tasks to export'); return; }
+  try {
+    await window.goalAPI.writeIcs(`goal-setter-${todayKey()}.ics`, ics);
+    toast(`Exported ${count} task${count > 1 ? 's' : ''} → .ics`);
+  } catch (e) { toast('Export failed: ' + e.message); }
+}
+
+/* ============================================================
+   Cloud sync
+   ============================================================ */
+let authMode = 'signin', hydrated = false, unsubRemote = null;
+
+function refreshFullUI() {
+  rolloverIfNeeded();
+  render();
+  if (currentPage === 'calendar') renderCalendar();
+  if (currentPage === 'archives') renderArchive();
+  if (currentPage === 'taskmaster') renderTaskmaster();
+  if (currentPage === 'create') renderCatManager();
+}
+function onRemoteState(remote) {
+  if (!remote || !Object.keys(remote).length) return;
+  if (Date.now() - lastLocalEditAt < 2000) return;
+  window.__goalApplyingRemote = true;
+  try {
+    state = migrate(Object.assign(defaultState(), remote));
+    refreshFullUI();
+  } finally { window.__goalApplyingRemote = false; }
+}
+async function hydrateFromCloud() {
+  if (hydrated) return;
+  hydrated = true;
+  const remote = await window.GoalCloud.pull();
+  if (remote && Object.keys(remote).length) {
+    window.__goalApplyingRemote = true;
+    try { state = migrate(Object.assign(defaultState(), remote)); refreshFullUI(); }
+    finally { window.__goalApplyingRemote = false; }
+  } else {
+    refreshFullUI();
+    window.GoalCloud.push(state);
+  }
+  if (!unsubRemote) unsubRemote = GoalStore.subscribe(onRemoteState);
+  updateAccountUI();
+}
+function updateAccountUI() {
+  const email = window.GoalCloud && window.GoalCloud.userEmail && window.GoalCloud.userEmail();
+  $('#accountRow').classList.toggle('hidden', !email);
+  if (email) $('#accountEmail').textContent = email;
+  const canSignIn = !!(window.GoalCloud && window.GoalCloud.available && window.GoalCloud.available() && !email);
+  $('#signInBtn').classList.toggle('hidden', !canSignIn);
+}
+function showAuth() { $('#authModal').classList.remove('hidden'); }
+function hideAuth() { $('#authModal').classList.add('hidden'); }
+
+function wireAuth() {
+  $('#authToggleMode').onclick = () => {
+    authMode = authMode === 'signin' ? 'signup' : 'signin';
+    $('#authTitle').textContent = authMode === 'signin' ? 'Sign in to sync' : 'Create your account';
+    $('#authSubmit').textContent = authMode === 'signin' ? 'Sign in' : 'Create account';
+    $('#authToggleMode').textContent = authMode === 'signin' ? 'Create account' : 'Have an account? Sign in';
+    $('#authError').classList.add('hidden');
+  };
+  $('#authSubmit').onclick = async () => {
+    const email = $('#authEmail').value.trim(), password = $('#authPassword').value;
+    if (!email || !password) return;
+    const fn = authMode === 'signin' ? window.GoalCloud.signIn : window.GoalCloud.signUp;
+    const { error } = await fn(email, password);
+    if (error) { const e = $('#authError'); e.textContent = error.message; e.classList.remove('hidden'); }
+    else if (authMode === 'signup') toast('Account created — signing you in');
+  };
+  $('#signOutBtn').onclick = async () => { await window.GoalCloud.signOut(); toast('Signed out'); };
+  $('#signInBtn').onclick = showAuth;
+}
+
+async function setupSync() {
+  if (!(window.GoalCloud && window.GoalCloud.available())) return;
+  wireAuth();
+  await window.GoalCloud.init();
+  GoalStore.use(window.GoalCloud.backend());
+  window.GoalCloud.onAuth(async (s) => {
+    if (s) { hideAuth(); await hydrateFromCloud(); updateAccountUI(); }
+    else {
+      if (unsubRemote) { unsubRemote(); unsubRemote = null; }
+      hydrated = false; updateAccountUI(); showAuth();
+    }
+  });
+  if (window.GoalCloud.getSession()) { hideAuth(); await hydrateFromCloud(); }
+  else { updateAccountUI(); showAuth(); }
+}
+
+/* ============================================================
+   Wiring
+   ============================================================ */
+function wire() {
+  document.querySelectorAll('.nav-item').forEach((b) => {
+    b.onclick = () => { showPage(b.dataset.page); document.body.classList.remove('sidebar-open'); };
+  });
+  $('#menuToggle').onclick = () => document.body.classList.toggle('sidebar-open');
+  $('#sidebarBackdrop').onclick = () => document.body.classList.remove('sidebar-open');
+
+  $('#themeToggle').onclick = () => {
+    state.theme = state.theme === 'dark' ? 'light' : 'dark';
+    save(); applyTheme(); pushWidget();
+  };
+
+  /* ---- task modal ---- */
+  document.querySelectorAll('#weightPick .w-btn').forEach((b) => {
+    b.onclick = () => {
+      modalWeight = Number(b.dataset.w);
+      document.querySelectorAll('#weightPick .w-btn').forEach((x) => x.classList.toggle('active', x === b));
+    };
+  });
+  document.querySelectorAll('#dayPick button').forEach((b) => {
+    b.onclick = () => {
+      const d = Number(b.dataset.day);
+      if (modalDays.has(d)) modalDays.delete(d); else modalDays.add(d);
+      b.classList.toggle('active', modalDays.has(d));
+    };
+  });
+  $('#taskCategory').onchange = (e) => { modalCatId = e.target.value; syncModalFields(); };
+  $('#recurringChk').addEventListener('change', syncModalFields);
+  $('#taskCadence').addEventListener('change', syncModalFields);
+  $('#modalCancel').onclick = closeModal;
+  $('#modalDelete').onclick = () => { if (modalEditId) deleteTask(modalEditId); closeModal(); };
+  $('#modalSave').onclick = saveModal;
+  $('#taskTitle').addEventListener('keydown', (e) => { if (e.key === 'Enter') saveModal(); });
+
+  /* ---- create page ---- */
+  document.querySelectorAll('#cWeight .w-btn').forEach((b) => {
+    b.onclick = () => document.querySelectorAll('#cWeight .w-btn').forEach((x) => x.classList.toggle('active', x === b));
+  });
+  const cDays = new Set();
+  document.querySelectorAll('#cDayPick button').forEach((b) => {
+    b.onclick = () => {
+      const d = Number(b.dataset.day);
+      if (cDays.has(d)) cDays.delete(d); else cDays.add(d);
+      b.classList.toggle('active', cDays.has(d));
+    };
+  });
+  const syncCreate = () => {
+    const rec = $('#cRecurring').checked;
+    const cat = getCat($('#cCategory').value) || getCat('daily');
+    $('#cRecurWrap').classList.toggle('hidden', !rec);
+    if (cat.type === 'weekly') $('#cCadence').value = 'weekly';
+    if (cat.type === 'daily' || cat.type === 'routine') $('#cCadence').value = 'daily';
+    $('#cCadence').disabled = cat.type !== 'custom';
+    $('#cDayPickWrap').classList.toggle('hidden', $('#cCadence').value !== 'daily');
+  };
+  $('#cRecurring').addEventListener('change', syncCreate);
+  $('#cCategory').addEventListener('change', syncCreate);
+  $('#cCadence').addEventListener('change', syncCreate);
+  $('#cDeliverBy').value = todayKey();
+  $('#cCreate').onclick = () => {
+    const rec = $('#cRecurring').checked;
+    const t = addTask({
+      title: $('#cTitle').value,
+      weight: Number(document.querySelector('#cWeight .w-btn.active').dataset.w),
+      note: $('#cNote').value.trim(),
+      categoryId: $('#cCategory').value,
+      recurring: rec,
+      cadence: rec ? $('#cCadence').value : null,
+      days: rec && $('#cCadence').value === 'daily' ? [...cDays].sort() : [],
+      deliverBy: $('#cDeliverBy').value || todayKey()
+    });
+    if (!t) { toast('Give the task a name first'); return; }
+    $('#cTitle').value = ''; $('#cNote').value = '';
+    cDays.clear();
+    document.querySelectorAll('#cDayPick button').forEach((b) => b.classList.remove('active'));
+    $('#cRecurring').checked = false; syncCreate();
+    toast(`Created “${t.title}”`);
+  };
+  $('#addCatBtn').onclick = () => { addCategory($('#newCatName').value); $('#newCatName').value = ''; };
+  $('#newCatName').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#addCatBtn').click(); });
+
+  /* ---- taskmaster ---- */
+  $('#tmAddBtn').onclick = () => openModal({ categoryId: 'daily' });
+
+  /* ---- import ---- */
+  $('#importCancel').onclick = () => $('#importModal').classList.add('hidden');
+  $('#importSave').onclick = () => {
+    const recurring = $('#importRecurring').checked;
+    let n = 0;
+    $('#importText').value.split('\n').forEach((line) => {
+      const p = parseTaskLine(line);
+      if (!p) return;
+      addTask({ title: p.title, weight: p.weight, categoryId: importCatId, recurring, cadence: recurring ? 'daily' : null, deliverBy: todayKey() });
+      n++;
+    });
+    $('#importModal').classList.add('hidden');
+    if (n) toast(`Imported ${n} task${n > 1 ? 's' : ''}`);
+  };
+
+  /* ---- day modal ---- */
+  $('#dayModalClose').onclick = () => $('#dayModal').classList.add('hidden');
+  $('#dayModalAdd').onclick = () => {
+    $('#dayModal').classList.add('hidden');
+    openModal({ categoryId: 'daily', deliverBy: dayModalKey });
+  };
+
+  /* ---- settings ---- */
+  $('#setShowImport').onchange = (e) => { state.settings.showImport = e.target.checked; save(); render(); };
+  $('#setShowWeightNotes').onchange = (e) => { state.settings.showWeightNotes = e.target.checked; save(); render(); };
+  $('#logTimeInput').value = state.logTime || '22:00';
+  $('#logTimeInput').onchange = (e) => {
+    const v = e.target.value;
+    if (!v) return;
+    state.logTime = v;
+    const [h, m] = v.split(':').map(Number);
+    const now = new Date();
+    if (now.getHours() * 60 + now.getMinutes() < h * 60 + m) {
+      state.loggedDays = state.loggedDays.filter((d) => d !== todayKey());
+    }
+    save(); toast('Daily log time set to ' + v);
+  };
+  $('#exportNowBtn').onclick = () => exportLog(false);
+  $('#exportGcalBtn').onclick = exportToGoogleCalendar;
+
+  /* ---- widget ---- */
+  updateWidgetToggle();
+  $('#widgetToggle').onclick = async () => {
+    state.widgetOpen = !state.widgetOpen;
+    save(); updateWidgetToggle();
+    if (window.goalAPI && window.goalAPI.setWidget) {
+      await window.goalAPI.setWidget(state.widgetOpen);
+      if (state.widgetOpen) pushWidget();
+    }
+  };
+  if (window.goalAPI && window.goalAPI.onWidgetClosed) {
+    window.goalAPI.onWidgetClosed(() => { state.widgetOpen = false; save(); updateWidgetToggle(); });
+  }
+  if (window.goalAPI && window.goalAPI.onWidgetToggle) {
+    window.goalAPI.onWidgetToggle(({ id }) => toggleTask(id));
+  }
+  if (state.widgetOpen && window.goalAPI && window.goalAPI.setWidget) {
+    window.goalAPI.setWidget(true).then(() => pushWidget());
+  }
+
+  /* ---- startup toggle ---- */
+  if (window.goalAPI && window.goalAPI.getAutostart) {
+    window.goalAPI.getAutostart().then(setStartupLabel).catch(() => setStartupLabel(false));
+    $('#startupToggle').onclick = async () => {
+      try {
+        const next = await window.goalAPI.setAutostart(!(await window.goalAPI.getAutostart()));
+        setStartupLabel(next);
+        toast(next ? 'Goal Setter will launch at startup' : 'Startup launch disabled');
+      } catch { toast('Startup setting unavailable'); }
+    };
+  }
+
+  /* ---- modal dismissal ---- */
+  document.querySelectorAll('.modal-overlay').forEach((m) => {
+    m.addEventListener('click', (e) => { if (e.target === m) m.classList.add('hidden'); });
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') document.querySelectorAll('.modal-overlay').forEach((m) => m.classList.add('hidden'));
+  });
+}

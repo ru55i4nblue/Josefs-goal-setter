@@ -34,69 +34,42 @@
     <aside class="sidebar">
       <div class="sidebar-title">Goal&nbsp;Setter</div>
       <nav class="nav">
-        <button class="nav-item active" data-page="today">
-          <span class="nav-ico">◧</span> Today
+        <button class="nav-item active" data-page="daily">
+          <span class="nav-ico">◧</span> Daily
+        </button>
+        <button class="nav-item" data-page="taskmaster">
+          <span class="nav-ico">◈</span> Taskmaster
+        </button>
+        <button class="nav-item" data-page="create">
+          <span class="nav-ico">＋</span> Create
         </button>
         <button class="nav-item" data-page="calendar">
           <span class="nav-ico">▦</span> Calendar
         </button>
-        <button class="nav-item" data-page="recurring">
-          <span class="nav-ico">↻</span> Recurring
-        </button>
         <button class="nav-item" data-page="archives">
           <span class="nav-ico">▤</span> Archives
         </button>
+        <button class="nav-item" data-page="settings">
+          <span class="nav-ico">⚙</span> Settings
+        </button>
       </nav>
       <div class="sidebar-spacer"></div>
-      <button id="exportNowBtn" class="sidebar-btn" title="Compile today's markdown log now">
-        ⤓ Export log
-      </button>
-      <div id="logTimeRow" class="logtime-row" title="Time the day's completed tasks are auto-logged">
-        <span class="logtime-label">Auto-log at</span>
-        <input id="logTimeInput" class="logtime-input" type="time" />
-      </div>
       <button id="signInBtn" class="sidebar-btn hidden">🔑 Sign in to sync</button>
       <div id="accountRow" class="account-row hidden">
         <span id="accountEmail" class="account-email"></span>
         <button id="signOutBtn" class="sidebar-btn account-signout">Sign out</button>
       </div>
       <button id="widgetToggle" class="sidebar-btn">📌 Sticky widget: off</button>
-      <button id="startupToggle" class="sidebar-btn">⏻ Launch at startup: off</button>
       <button id="themeToggle" class="sidebar-btn">🌙 Dark mode</button>
     </aside>
 
-    <!-- ===================== TODAY PAGE ===================== -->
-    <main id="page-today" class="page page-today">
-      <section class="lists-col">
-        <!-- WEEKLY TASKS SECTION -->
-        <div class="list-section weekly-sec">
-          <div class="section-head">
-            <h2>Weekly tasks <span class="neon-text">●</span></h2>
-            <button class="add-mini" data-add="weekly">＋</button>
-          </div>
-          <div id="weeklyList" class="task-list"></div>
-        </div>
-
-        <!-- DAILY TASKS SECTION (fills remaining height, scrolls) -->
-        <div class="list-section daily-sec">
-          <div class="section-head">
-            <h2>Daily tasks <span class="purple-text">●</span></h2>
-            <div class="head-actions">
-              <button class="add-mini" id="splitToggle" title="Split scheduled vs recurring">⊟</button>
-              <button class="add-mini" data-import="1" title="Import / paste from Notion">⇪</button>
-              <button class="add-mini" data-add="daily">＋</button>
-            </div>
-          </div>
-          <div id="dailyList" class="task-list daily-scroll"></div>
-          <input id="quickAdd" class="quick-add" type="text"
-                 placeholder="＋ Quick add — Enter to save, end with (2) or (3) for weight" />
-        </div>
-      </section>
+    <!-- ===================== DAILY PAGE ===================== -->
+    <main id="page-daily" class="page page-today">
+      <section id="categoryCols" class="lists-col"></section>
 
       <!-- PROGRESS BARS: right third, vertical, weekly stacked on top of daily -->
       <section class="bars-col">
         <div class="bars-stack">
-          <!-- WEEKLY (top) -->
           <div class="vbar-group">
             <div class="vbar-readout">
               <span id="weeklyPct" class="vpct neon">0%</span>
@@ -107,7 +80,6 @@
             </div>
           </div>
 
-          <!-- DAILY (bottom) — height scales with total weight -->
           <div class="vbar-group">
             <div id="dailyTrack" class="vbar-track">
               <div id="dailyBarFill" class="vbar-fill daily"></div>
@@ -128,6 +100,92 @@
       </section>
     </main>
 
+    <!-- ===================== TASKMASTER PAGE ===================== -->
+    <main id="page-taskmaster" class="page page-taskmaster hidden">
+      <div class="cal-header">
+        <h1 class="archive-title">Taskmaster</h1>
+        <button id="tmAddBtn" class="btn-primary">＋ New task</button>
+      </div>
+      <p class="cal-sub">Everything ahead of you, sorted by deliver-by date. Recurring tasks show
+        only their next uncompleted instance.</p>
+      <div id="taskmasterBody" class="taskmaster-body"></div>
+    </main>
+
+    <!-- ===================== CREATE PAGE ===================== -->
+    <main id="page-create" class="page page-create hidden">
+      <h1 class="archive-title">Create</h1>
+
+      <div class="create-grid">
+        <section class="create-card">
+          <h2 class="create-h2">New task</h2>
+          <label class="field-label">Task</label>
+          <input id="cTitle" class="text-input" type="text" placeholder="What needs doing?" />
+
+          <label class="field-label">Category</label>
+          <select id="cCategory" class="text-input"></select>
+
+          <label class="field-label">Weight</label>
+          <div id="cWeight" class="weight-pick weight-pick-5">
+            <button type="button" data-w="1" class="w-btn active">1</button>
+            <button type="button" data-w="2" class="w-btn">2</button>
+            <button type="button" data-w="3" class="w-btn">3</button>
+            <button type="button" data-w="4" class="w-btn">4</button>
+            <button type="button" data-w="5" class="w-btn">5</button>
+          </div>
+
+          <label class="field-label">Why this matters / consequences if skipped</label>
+          <textarea id="cNote" class="text-area note-area"
+            placeholder="Context for the weighting — why it needs doing, and what happens if it isn't."></textarea>
+
+          <label class="field-label">Deliver by</label>
+          <input id="cDeliverBy" class="text-input" type="date" />
+
+          <label class="check-row">
+            <input id="cRecurring" type="checkbox" />
+            <span>Recurring task</span>
+          </label>
+
+          <div id="cRecurWrap" class="hidden">
+            <label class="field-label">Repeats</label>
+            <select id="cCadence" class="text-input">
+              <option value="daily">Daily (choose weekdays)</option>
+              <option value="weekly">Weekly</option>
+            </select>
+            <div id="cDayPickWrap">
+              <label class="field-label">Repeat on (none = every day)</label>
+              <div id="cDayPick" class="day-pick">
+                <button type="button" data-day="1">M</button>
+                <button type="button" data-day="2">T</button>
+                <button type="button" data-day="3">W</button>
+                <button type="button" data-day="4">T</button>
+                <button type="button" data-day="5">F</button>
+                <button type="button" data-day="6">S</button>
+                <button type="button" data-day="0">S</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button id="cCreate" class="btn-primary">Create task</button>
+          </div>
+        </section>
+
+        <section class="create-card">
+          <h2 class="create-h2">Categories</h2>
+          <p class="modal-hint">Custom categories hold tasks that stay put until you complete or
+            delete them. Completed ones move to that category's own archive.</p>
+
+          <div id="catManager" class="cat-manager"></div>
+
+          <label class="field-label">New category</label>
+          <div class="cat-new-row">
+            <input id="newCatName" class="text-input" type="text" placeholder="e.g. Projects" />
+            <button id="addCatBtn" class="btn-primary">Add</button>
+          </div>
+        </section>
+      </div>
+    </main>
+
     <!-- ===================== CALENDAR PAGE ===================== -->
     <main id="page-calendar" class="page page-calendar hidden">
       <div class="cal-header">
@@ -140,25 +198,47 @@
       <div id="calMonths" class="cal-months"></div>
     </main>
 
-    <!-- ===================== RECURRING PAGE ===================== -->
-    <main id="page-recurring" class="page page-recurring hidden">
-      <div class="cal-header">
-        <h1 class="archive-title">Recurring tasks</h1>
-        <button id="addRecurringBtn" class="btn-primary">＋ New recurring</button>
-      </div>
-      <p class="cal-sub">Set the days each task repeats, its weight, and whether it's a routine chore.
-        Routine tasks sit lowest in priority.</p>
-      <div id="recurringBody" class="recurring-body"></div>
-    </main>
-
     <!-- ===================== ARCHIVES PAGE ===================== -->
     <main id="page-archives" class="page page-archives hidden">
       <h1 class="archive-title">Archives</h1>
-      <div class="archive-tabs">
-        <button class="archive-tab active" data-arch="daily">Daily (7 days)</button>
-        <button class="archive-tab" data-arch="weekly">Weekly (4 weeks)</button>
-      </div>
+      <div id="archiveTabs" class="archive-tabs"></div>
       <div id="archiveBody" class="archive-body"></div>
+    </main>
+
+    <!-- ===================== SETTINGS PAGE ===================== -->
+    <main id="page-settings" class="page page-settings hidden">
+      <h1 class="archive-title">Settings</h1>
+
+      <section class="create-card settings-card">
+        <h2 class="create-h2">Interface</h2>
+        <label class="check-row">
+          <input id="setShowImport" type="checkbox" />
+          <span>Show the “import / paste from Notion” button (⇪)</span>
+        </label>
+        <label class="check-row">
+          <input id="setShowWeightNotes" type="checkbox" />
+          <span>Show weight notes inline under task names</span>
+        </label>
+      </section>
+
+      <section class="create-card settings-card">
+        <h2 class="create-h2">Daily log <span class="desktop-only-tag">desktop only</span></h2>
+        <div id="logTimeRow" class="logtime-row" title="Time the day's completed tasks are auto-logged">
+          <span class="logtime-label">Auto-log at</span>
+          <input id="logTimeInput" class="logtime-input" type="time" />
+        </div>
+        <div class="settings-actions">
+          <button id="exportNowBtn" class="btn-ghost">⤓ Export log now</button>
+          <button id="startupToggle" class="btn-ghost">⏻ Launch at startup: off</button>
+        </div>
+      </section>
+
+      <section class="create-card settings-card">
+        <h2 class="create-h2">Widget</h2>
+        <p class="modal-hint">Choose which categories appear on the floating sticky widget
+          (set per category on the Create page).</p>
+        <div id="widgetCatList" class="widget-cat-list"></div>
+      </section>
     </main>
   </div>
 
@@ -169,20 +249,43 @@
       <div id="modalDateNote" class="modal-date-note hidden"></div>
       <label class="field-label">Task</label>
       <input id="taskTitle" class="text-input" type="text" placeholder="What needs doing?" />
-      <label class="field-label">Weight</label>
-      <div id="weightPick" class="weight-pick">
-        <button data-w="1" class="w-btn active">1</button>
-        <button data-w="2" class="w-btn">2</button>
-        <button data-w="3" class="w-btn">3</button>
+
+      <div id="categoryRow">
+        <label class="field-label">Category</label>
+        <select id="taskCategory" class="text-input"></select>
       </div>
-      <div id="dateRow" class="date-row hidden">
-        <label id="dateLabel" class="field-label">Date</label>
+
+      <label class="field-label">Weight</label>
+      <div id="weightPick" class="weight-pick weight-pick-5">
+        <button type="button" data-w="1" class="w-btn active">1</button>
+        <button type="button" data-w="2" class="w-btn">2</button>
+        <button type="button" data-w="3" class="w-btn">3</button>
+        <button type="button" data-w="4" class="w-btn">4</button>
+        <button type="button" data-w="5" class="w-btn">5</button>
+      </div>
+
+      <label class="field-label">Why this matters / consequences if skipped</label>
+      <textarea id="taskNote" class="text-area note-area"
+        placeholder="Context for the weighting — why it needs doing, and what happens if it isn't."></textarea>
+
+      <div id="dateRow" class="date-row">
+        <label id="dateLabel" class="field-label">Deliver by</label>
         <input id="taskDate" class="text-input" type="date" />
       </div>
+
       <label class="check-row">
         <input id="recurringChk" type="checkbox" />
-        <span id="recurringLabel">Recurring every day</span>
+        <span id="recurringLabel">Recurring task</span>
       </label>
+
+      <div id="cadenceWrap" class="hidden">
+        <label class="field-label">Repeats</label>
+        <select id="taskCadence" class="text-input">
+          <option value="daily">Daily (choose weekdays)</option>
+          <option value="weekly">Weekly</option>
+        </select>
+      </div>
+
       <div id="dayPickWrap" class="day-pick-wrap hidden">
         <label class="field-label">Repeat on (none = every day)</label>
         <div id="dayPick" class="day-pick">
@@ -195,10 +298,7 @@
           <button type="button" data-day="0">S</button>
         </div>
       </div>
-      <label id="routineRow" class="check-row hidden">
-        <input id="routineChk" type="checkbox" />
-        <span>Routine task (trivial everyday chore — lowest priority)</span>
-      </label>
+
       <div class="modal-actions">
         <button id="modalDelete" class="btn-danger hidden">Delete</button>
         <button id="modalCancel" class="btn-ghost">Cancel</button>
@@ -210,10 +310,10 @@
   <!-- IMPORT MODAL -->
   <div id="importModal" class="modal-overlay hidden">
     <div class="modal">
-      <h3>Import from Notion</h3>
+      <h3>Import tasks</h3>
       <p class="modal-hint">Paste a checklist from Notion (or any markdown list). Lines like
         <code>- [ ] Task</code> or <code>• Task</code> become tasks. Add <code>(2)</code> or
-        <code>!2</code> at the end to set a weight.</p>
+        <code>!2</code> at the end to set a weight (1–5).</p>
       <textarea id="importText" class="text-area" placeholder="- [ ] Write report (3)&#10;- [ ] Reply to emails (1)&#10;- [ ] Gym !2"></textarea>
       <label class="check-row">
         <input id="importRecurring" type="checkbox" />
@@ -261,6 +361,8 @@
   <script src="supabase-config.js"></script>
   <script src="store.js"></script>
   <script src="supabase-backend.js"></script>
+  <script src="model.js"></script>
+  <script src="pages.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>

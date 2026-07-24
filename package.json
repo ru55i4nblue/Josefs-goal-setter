@@ -31,6 +31,8 @@
       "index.html",
       "styles.css",
       "renderer.js",
+      "model.js",
+      "pages.js",
       "widget.html",
       "widget.js",
       "widget.css",

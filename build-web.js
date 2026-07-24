@@ -12,6 +12,8 @@ const files = [
   'index.html',
   'styles.css',
   'renderer.js',
+  'model.js',
+  'pages.js',
   'store.js',
   'supabase-config.js',
   'supabase-backend.js',

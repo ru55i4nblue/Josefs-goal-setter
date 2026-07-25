@@ -57,7 +57,7 @@ function tmSection(label, rows, urgent) {
     const meta = el('div', 'tm-meta');
     meta.innerHTML = `<span class="tm-cat ${cat.color}">${escapeHtml(cat.name)}</span>`
       + (t.recurring ? `<span class="recur-badge">${escapeHtml(recurLabel(t))}</span>` : '')
-      + `<span class="tm-due">${escapeHtml(shortDate(due))}</span>`;
+      + `<span class="tm-due">${escapeHtml(prettyDate(due))}</span>`;
     main.appendChild(meta);
     if (t.note && state.settings.showWeightNotes) {
       const note = el('div', 'task-note');
@@ -231,7 +231,7 @@ function renderSettings() {
 function updateDatePreview() {
   const tk = todayKey();
   $('#dateFormatPreview').textContent =
-    `Today reads as “${prettyDate(tk)}” · task badges show “${shortDate(tk)}”`;
+    `Dates read as “${prettyDate(tk)}” · the sticky widget uses the compact “${shortDate(tk)}”`;
 }
 
 /* ============================================================
@@ -251,7 +251,8 @@ function renderArchive() {
   const defs = [
     { id: 'daily', label: 'Daily (7 days)' },
     { id: 'weekly', label: 'Weekly (4 weeks)' }
-  ].concat(state.categories.filter((c) => c.type === 'custom').map((c) => ({ id: 'cat:' + c.id, label: c.name })));
+  ].concat(state.categories.filter((c) => c.type === 'custom').map((c) => ({ id: 'cat:' + c.id, label: c.name })))
+    .concat([{ id: 'deleted', label: `Recently deleted${state.deleted.length ? ` (${state.deleted.length})` : ''}` }]);
 
   defs.forEach((d) => {
     const b = el('button', 'archive-tab' + (archiveTab === d.id ? ' active' : ''));
@@ -263,6 +264,7 @@ function renderArchive() {
   const body = $('#archiveBody');
   body.innerHTML = '';
 
+  if (archiveTab === 'deleted') return renderDeleted(body);
   if (archiveTab.startsWith('cat:')) return renderCustomArchive(archiveTab.slice(4), body);
 
   const data = archiveTab === 'daily' ? state.dailyArchive : state.weeklyArchive;
@@ -287,19 +289,75 @@ function renderArchive() {
         <span>${escapeHtml(t.title)}</span>
         <span class="weight-badge w${t.weight}">×${t.weight}</span>
         <span class="arch-time">${escapeHtml(t.completedAt || '—')}</span>`;
-      const readd = el('button', 'arch-readd btn-restore');
-      readd.textContent = '↩ Restore';
-      readd.title = 'Re-add to today';
-      readd.onclick = () => {
-        addTask({ title: t.title, weight: t.weight, note: t.note || '',
-          categoryId: archiveTab === 'daily' ? 'daily' : 'weekly', deliverBy: todayKey() });
-        toast(`Re-added “${t.title}”`);
-      };
-      row.appendChild(readd);
+      // Routine chores are a fixed everyday list — re-adding one would just
+      // duplicate the recurring task that already exists, so offer no restore.
+      if (t.categoryId !== 'routine') {
+        const readd = el('button', 'arch-readd btn-restore');
+        readd.textContent = '↩ Restore';
+        readd.title = 'Re-add to today';
+        readd.onclick = () => {
+          addTask({ title: t.title, weight: t.weight, note: t.note || '',
+            categoryId: archiveTab === 'daily' ? 'daily' : 'weekly', deliverBy: todayKey() });
+          toast(`Re-added “${t.title}”`);
+        };
+        row.appendChild(readd);
+      }
       card.appendChild(row);
     });
     body.appendChild(card);
   });
+}
+
+function renderDeleted(body) {
+  if (!state.deleted.length) {
+    body.innerHTML = '<div class="empty-hint">Nothing deleted recently. Tasks you delete are kept here for 30 days so you can get them back.</div>';
+    return;
+  }
+  const card = el('div', 'archive-card');
+  card.innerHTML = `<h3>Recently deleted</h3>
+    <div class="arch-sub">${state.deleted.length} task${state.deleted.length === 1 ? '' : 's'} · kept for 30 days</div>`;
+
+  state.deleted.forEach((t) => {
+    const cat = getCat(t.categoryId);
+    const row = el('div', 'arch-task');
+    row.innerHTML = `
+      <span class="no">🗑</span>
+      <span>${escapeHtml(t.title)}</span>
+      <span class="tm-cat ${cat ? cat.color : 'gray'}">${escapeHtml(cat ? cat.name : 'deleted category')}</span>
+      ${catHasWeight(t.categoryId) ? `<span class="weight-badge w${t.weight}">×${t.weight}</span>` : ''}
+      <span class="arch-time">${escapeHtml(shortDate(t.deletedAt) + (t.deletedTime ? ' ' + t.deletedTime : ''))}</span>`;
+
+    const restore = el('button', 'arch-readd btn-restore');
+    restore.textContent = '↩ Restore';
+    restore.title = 'Put this task back' + (cat ? ` in ${cat.name}` : '');
+    restore.onclick = () => { restoreDeleted(t.id); renderArchive(); };
+    row.appendChild(restore);
+
+    const purge = el('button', 'row-del purge-btn');
+    purge.textContent = '✕';
+    purge.title = 'Delete permanently';
+    purge.onclick = () => {
+      state.deleted = state.deleted.filter((x) => x.id !== t.id);
+      save(); renderArchive();
+      toast(`“${t.title}” permanently deleted`);
+    };
+    row.appendChild(purge);
+    card.appendChild(row);
+  });
+
+  const clear = el('button', 'btn-ghost clear-deleted');
+  clear.textContent = 'Empty recently deleted';
+  clear.onclick = () => {
+    const n = state.deleted.length;
+    const backup = state.deleted.slice();
+    state.deleted = [];
+    save(); renderArchive();
+    toast(`Emptied ${n} task${n === 1 ? '' : 's'}`, 'Undo', () => {
+      state.deleted = backup; save(); renderArchive();
+    });
+  };
+  card.appendChild(clear);
+  body.appendChild(card);
 }
 
 function renderCustomArchive(catId, body) {
@@ -609,9 +667,26 @@ function refreshFullUI() {
   if (currentPage === 'archives') renderArchive();
   if (currentPage === 'create') renderCatManager();
 }
+// A v1 client stores tasks in dailyTasks/scheduled/weeklyTasks and knows nothing
+// about `tasks`. If such a client is still running on another device it will push
+// its own shape and blank out everything here, so refuse those payloads and push
+// our (newer) state back instead of adopting them.
+function isStaleSchema(remote) {
+  if (!remote) return true;
+  if (remote.version >= 2) return false;
+  const hasV2 = Array.isArray(remote.tasks) && remote.tasks.length;
+  const localHasTasks = Array.isArray(state.tasks) && state.tasks.length;
+  return !hasV2 && localHasTasks;
+}
+
 function onRemoteState(remote) {
   if (!remote || !Object.keys(remote).length) return;
   if (Date.now() - lastLocalEditAt < 2000) return;
+  if (isStaleSchema(remote)) {
+    if (window.GoalCloud && window.GoalCloud.push) window.GoalCloud.push(state);
+    toast('Another device is running an old version — update it to sync');
+    return;
+  }
   window.__goalApplyingRemote = true;
   try {
     state = migrate(Object.assign(defaultState(), remote));
@@ -622,6 +697,14 @@ async function hydrateFromCloud() {
   if (hydrated) return;
   hydrated = true;
   const remote = await window.GoalCloud.pull();
+  if (remote && Object.keys(remote).length && isStaleSchema(remote)) {
+    // don't adopt an old-format payload over newer local data — republish ours
+    window.GoalCloud.push(state);
+    refreshFullUI();
+    if (!unsubRemote) unsubRemote = GoalStore.subscribe(onRemoteState);
+    updateAccountUI();
+    return;
+  }
   if (remote && Object.keys(remote).length) {
     window.__goalApplyingRemote = true;
     try { state = migrate(Object.assign(defaultState(), remote)); refreshFullUI(); }

@@ -112,6 +112,7 @@ function defaultState() {
     categories: BUILTIN_CATEGORIES.map((c) => ({ ...c })),
     tasks: [],
     archive: [],        // completed tasks from custom categories
+    deleted: [],        // recently deleted tasks, newest first (pruned after 30 days)
     dailyArchive: [],   // [{date, tasks:[snapshot]}]
     weeklyArchive: [],  // [{week, tasks:[snapshot]}]
     dayOrders: {},      // { 'YYYY-MM-DD': { taskId: index } } — per-day manual order
@@ -144,6 +145,10 @@ function migrate(s) {
   });
   if (!Array.isArray(s.tasks)) s.tasks = [];
   if (!Array.isArray(s.archive)) s.archive = [];
+  if (!Array.isArray(s.deleted)) s.deleted = [];
+  // recently-deleted is a safety net, not storage — drop anything over 30 days old
+  const cutoff = addDays(todayKey(), -30);
+  s.deleted = s.deleted.filter((t) => (t.deletedAt || '9999') >= cutoff).slice(0, 200);
   if (!s.dayOrders || typeof s.dayOrders !== 'object') s.dayOrders = {};
   if (!s.settings) s.settings = { showImport: true, showWeightNotes: true };
   if (typeof s.settings.showImport !== 'boolean') s.settings.showImport = true;

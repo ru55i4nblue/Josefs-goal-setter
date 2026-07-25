@@ -92,4 +92,10 @@ body.dark .box.done.neon::after { color: #08130c; }
 .wname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
 .wtask.done .wname { color: var(--text-faint); text-decoration: line-through; }
 .wbadge { font-size: 10px; color: var(--text-faint); flex-shrink: 0; }
+.wdue {
+  font-size: 9.5px; color: var(--text-faint); flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+.wdue.today { color: var(--purple); font-weight: 700; }
+.wdue.overdue { color: #e0584b; font-weight: 700; }
 .empty { color: var(--text-faint); font-size: 11.5px; font-style: italic; }

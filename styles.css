@@ -555,8 +555,10 @@ body.dark .checkbox.neon.checked::after { color: #08130c; }
 .due-badge {
   flex-shrink: 0; font-size: 10.5px; font-variant-numeric: tabular-nums;
   color: var(--text-faint); padding: 2px 7px; border-radius: 999px;
-  background: var(--track);
+  background: var(--track); white-space: nowrap;
 }
+.purge-btn { opacity: 1 !important; margin-left: 4px; }
+.clear-deleted { margin-top: 12px; font-size: 12.5px; padding: 6px 12px; }
 .due-badge.today { color: var(--purple); background: rgba(139,92,246,.15); font-weight: 700; }
 .due-badge.overdue { color: #e0584b; background: rgba(224,88,75,.14); font-weight: 700; }
 

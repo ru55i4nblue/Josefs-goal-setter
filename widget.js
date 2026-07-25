@@ -12,9 +12,13 @@ function taskRow(t, color) {
   name.className = 'wname';
   name.textContent = t.title;
 
+  const due = document.createElement('span');
+  due.className = 'wdue' + (t.due === 'today' ? ' today' : '') + (t.overdue ? ' overdue' : '');
+  due.textContent = t.due || '';
+
   const badge = document.createElement('span');
   badge.className = 'wbadge';
-  badge.textContent = '×' + t.weight;
+  badge.textContent = t.weight == null ? '' : '×' + t.weight;
 
   row.onclick = () => {
     if (!window.widgetAPI || !window.widgetAPI.toggle) return;
@@ -25,7 +29,8 @@ function taskRow(t, color) {
 
   row.appendChild(box);
   row.appendChild(name);
-  row.appendChild(badge);
+  row.appendChild(due);
+  if (badge.textContent) row.appendChild(badge);
   return row;
 }
 

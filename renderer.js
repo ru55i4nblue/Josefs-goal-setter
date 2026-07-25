@@ -123,8 +123,23 @@ function deleteTask(id) {
   const t = findTask(id);
   if (!t) return;
   state.tasks = state.tasks.filter((x) => x.id !== id);
+  // keep a copy so it can be recovered later from Archives → Recently deleted
+  state.deleted.unshift({ ...t, deletedAt: todayKey(), deletedTime: nowTime() });
+  state.deleted = state.deleted.slice(0, 200);
   afterChange();
-  toast(`Deleted “${t.title}”`, 'Undo', () => { state.tasks.push(t); afterChange(); });
+  toast(`Deleted “${t.title}”`, 'Undo', () => { restoreDeleted(t.id); });
+}
+
+function restoreDeleted(id) {
+  const rec = state.deleted.find((x) => x.id === id);
+  if (!rec) return;
+  state.deleted = state.deleted.filter((x) => x.id !== id);
+  const { deletedAt, deletedTime, ...task } = rec;
+  // its category may have been removed in the meantime
+  if (!getCat(task.categoryId)) task.categoryId = 'daily';
+  state.tasks.push(task);
+  afterChange();
+  toast(`Restored “${task.title}”`);
 }
 
 function addTask(opts) {
@@ -214,16 +229,23 @@ function catBoxTasks(cat) {
   });
 }
 
+// The single ordering used by BOTH the category box and the widget, so the two
+// can never drift: due today first (in the category's own order), then upcoming
+// by deliver-by date.
+function catOrderedTasks(cat, dateKey = todayKey()) {
+  const pool = catBoxTasks(cat);
+  const dueToday = sortInCat(pool.filter((t) => dueDateOf(t) <= dateKey), cat, dateKey);
+  const later = pool.filter((t) => dueDateOf(t) > dateKey)
+    .sort((a, b) => dueDateOf(a).localeCompare(dueDateOf(b)) || orderOf(a, dateKey) - orderOf(b, dateKey));
+  return { dueToday, later, all: dueToday.concat(later) };
+}
+
 function categoryBox(cat) {
   const dateKey = todayKey();
   const box = el('div', 'list-section cat-box');
   box.dataset.cat = cat.id;
 
-  const pool = catBoxTasks(cat);
-  const dueToday = sortInCat(pool.filter((t) => dueDateOf(t) <= dateKey), cat, dateKey);
-  const later = pool.filter((t) => dueDateOf(t) > dateKey)
-    .sort((a, b) => dueDateOf(a).localeCompare(dueDateOf(b)) || orderOf(a, dateKey) - orderOf(b, dateKey));
-  const all = dueToday.concat(later);
+  const { dueToday, later, all } = catOrderedTasks(cat, dateKey);
   const limit = cat.expanded ? all.length : Math.max(1, cat.limit || 3);
 
   /* ---- header ---- */
@@ -349,7 +371,7 @@ function taskRow(t, container, dateKey, cat) {
   const due = dueDateOf(t);
   const tk = todayKey();
   const dueBadge = el('span', 'due-badge' + (due < tk ? ' overdue' : due === tk ? ' today' : ''));
-  dueBadge.textContent = due === tk ? 'today' : shortDate(due);
+  dueBadge.textContent = due === tk ? 'today' : prettyDate(due);   // the user's chosen format
   dueBadge.title = 'Deliver by ' + prettyDate(due);
   row.appendChild(dueBadge);
 
@@ -475,10 +497,17 @@ function pushWidget() {
   if (!window.goalAPI || !window.goalAPI.pushWidget) return;
   const dateKey = todayKey();
   const sections = state.categories.filter((c) => c.widget).map((c) => {
-    const tasks = sortInCat(catTasksFor(c.id, dateKey), c, dateKey).slice(0, Math.max(1, c.limit || 2));
+    // same ordering the app shows, so the widget never disagrees with the list
+    const tasks = catOrderedTasks(c, dateKey).all.slice(0, Math.max(1, c.limit || 2));
     const sec = {
       key: c.id, label: c.name, color: c.color,
-      tasks: tasks.map((t) => ({ id: t.id, kind: c.id, title: t.title, weight: t.weight, done: t.done }))
+      tasks: tasks.map((t) => ({
+        id: t.id, kind: c.id, title: t.title, done: t.done,
+        weight: catHasWeight(c.id) ? t.weight : null,
+        due: dueDateOf(t) === dateKey ? 'today' : shortDate(dueDateOf(t)),  // widget is tiny — compact form
+
+        overdue: dueDateOf(t) < dateKey
+      }))
     };
     if (c.type === 'weekly') sec.pct = Math.round(weeklyProgress().pct);
     if (c.type === 'daily') sec.pct = Math.round(dailyProgress().pct);

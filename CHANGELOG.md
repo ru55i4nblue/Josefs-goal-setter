@@ -9,7 +9,19 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 _Nothing yet._
 
-## [2.0.1] — 2026-07-25
+## [2.1.0] — 2026-07-25
+
+### Added
+
+- **Recently deleted** tab in the archives. Deleted tasks are kept for 30 days with
+  their category, weight and deletion time, and can be restored or purged
+  individually — or all at once, with undo.
+
+### Changed
+
+- Routine tasks no longer offer a **Restore** button in the archives: they're a
+  fixed everyday list, so restoring one would only duplicate the recurring task
+  that already exists.
 
 ### Fixed
 
@@ -30,18 +42,6 @@ _Nothing yet._
   in incompatible shapes, so an old client would push its own empty-looking state
   over your tasks. 2.x now rejects outdated payloads and republishes its own state
   instead.
-
-### Added
-
-- **Recently deleted** tab in the archives. Deleted tasks are kept for 30 days with
-  their category, weight and deletion time, and can be restored or purged
-  individually — or all at once, with undo.
-
-### Changed
-
-- Routine tasks no longer offer a **Restore** button in the archives: they're a
-  fixed everyday list, so restoring one would only duplicate the recurring task
-  that already exists.
 
 ## [2.0.0] — 2026-07-25
 
@@ -164,7 +164,7 @@ First public release. Windows installer and macOS disk images published from CI.
 - Recurring tasks showing as already completed when viewing a future day.
 - macOS CI builds failing while attempting to publish a release.
 
-[Unreleased]: https://github.com/ru55i4nblue/goal-setter/compare/v2.0.1...HEAD
-[2.0.1]: https://github.com/ru55i4nblue/goal-setter/compare/v2.0.0...v2.0.1
+[Unreleased]: https://github.com/ru55i4nblue/goal-setter/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/ru55i4nblue/goal-setter/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/ru55i4nblue/goal-setter/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/ru55i4nblue/goal-setter/releases/tag/v1.0.0

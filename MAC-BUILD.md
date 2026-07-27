@@ -43,16 +43,30 @@ Double-click the right one, drag **Goal Setter** into **Applications**, done.
 
 ## First launch on the Mac — Gatekeeper
 
-The build is **unsigned** (no paid Apple Developer account), so macOS Gatekeeper
-will warn the first time. To open it:
+The build is **ad-hoc signed but not notarised** (notarising needs a paid Apple
+Developer account), so Gatekeeper warns the first time.
 
-- **Right-click** the app in Applications → **Open** → **Open** in the dialog.
-  *(Only needed once; after that it launches normally.)*
-- If macOS says the app "is damaged and can't be opened," run this once in Terminal:
-  ```bash
-  xattr -cr "/Applications/Goal Setter.app"
-  ```
-  then open it normally. (This just clears the download-quarantine flag.)
+- **macOS 15 Sequoia and later:** double-click, dismiss the warning, then
+  **System Settings → Privacy & Security** → scroll down → **Open Anyway**.
+  Sequoia removed the right-click bypass, so this is the only route.
+- **macOS 14 and earlier:** **right-click** the app → **Open** → **Open**.
+
+Only needed once; afterwards it launches normally.
+
+### Why ad-hoc signing matters
+
+macOS refuses to run an **arm64** binary carrying *no* signature at all — it reports
+the app as damaged or untrusted, and `xattr -cr` cannot fix that, because the
+problem isn't quarantine but the missing signature. The build therefore ad-hoc
+signs the bundle (`build/afterPack.js`, wired up via the `afterPack` hook). Ad-hoc
+signing needs no certificate and costs nothing.
+
+If a build ever slips through unsigned, fix a local copy with:
+
+```bash
+xattr -cr "/Applications/Goal Setter.app"
+codesign --force --deep --sign - "/Applications/Goal Setter.app"
+```
 
 To make it launch on login, use the **"Launch at startup"** toggle inside the app —
 it works the same on macOS as on Windows.

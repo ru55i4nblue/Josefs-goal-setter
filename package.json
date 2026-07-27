@@ -60,6 +60,7 @@
       "createStartMenuShortcut": true,
       "shortcutName": "Goal Setter"
     },
+    "afterPack": "build/afterPack.js",
     "mac": {
       "target": [
         { "target": "dmg", "arch": ["arm64", "x64"] }

@@ -19,9 +19,21 @@ Grab the installer from the **latest** entry on the
 | **macOS (Apple Silicon)** | `Goal Setter-<version>-arm64.dmg` | Open the DMG, drag **Goal Setter** into **Applications**. |
 | **macOS (Intel)** | `Goal Setter-<version>-x64.dmg` | Same as above. |
 
-**First launch on macOS:** the app is unsigned, so right-click it in Applications →
-**Open** → **Open** (one time only). If macOS claims the app is "damaged", run
-`xattr -cr "/Applications/Goal Setter.app"` in Terminal once, then open it normally.
+**First launch on macOS.** The app is ad-hoc signed but not notarised (that needs a
+paid Apple Developer account), so macOS asks once:
+
+- **macOS 15 Sequoia and later:** double-click the app, dismiss the warning, then go
+  to **System Settings → Privacy & Security**, scroll down and click
+  **Open Anyway**. (Sequoia removed the old right-click shortcut.)
+- **macOS 14 and earlier:** **right-click** the app in Applications → **Open** →
+  **Open**.
+
+If it still refuses, clear the download quarantine flag and re-sign it locally:
+
+```bash
+xattr -cr "/Applications/Goal Setter.app"
+codesign --force --deep --sign - "/Applications/Goal Setter.app"
+```
 
 Want it to start with your computer? Turn on **Launch at startup** in **Settings**.
 

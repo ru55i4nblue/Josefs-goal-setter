@@ -9,6 +9,40 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 _Nothing yet._
 
+## [2.0.1] — 2026-07-25
+
+### Fixed
+
+- **macOS builds now launch.** The app was published with no code signature at
+  all, and macOS refuses to run an unsigned Apple Silicon binary — it reported the
+  app as untrusted or damaged, and clearing the quarantine flag with `xattr -cr`
+  couldn't help because the signature was missing rather than blocked. Builds are
+  now **ad-hoc signed**. You'll still get one "unidentified developer" prompt
+  (the build isn't notarised); on macOS 15 and later, allow it via
+  **System Settings → Privacy & Security → Open Anyway**.
+- **The floating widget listed tasks in a different order from the app.** Both now
+  share one ordering — due today first, then by deliver-by date — and the widget
+  shows each task's due date.
+- **Deliver-by dates on task rows ignored the chosen date format**, showing a
+  shortened form instead. They now use the format you picked. (The widget still
+  uses a compact form, since it's only a couple of hundred pixels wide.)
+- **A device still running 1.x could wipe 2.x data.** The two versions store tasks
+  in incompatible shapes, so an old client would push its own empty-looking state
+  over your tasks. 2.x now rejects outdated payloads and republishes its own state
+  instead.
+
+### Added
+
+- **Recently deleted** tab in the archives. Deleted tasks are kept for 30 days with
+  their category, weight and deletion time, and can be restored or purged
+  individually — or all at once, with undo.
+
+### Changed
+
+- Routine tasks no longer offer a **Restore** button in the archives: they're a
+  fixed everyday list, so restoring one would only duplicate the recurring task
+  that already exists.
+
 ## [2.0.0] — 2026-07-25
 
 A large restructure around user-defined categories. **Existing saves migrate
@@ -130,6 +164,7 @@ First public release. Windows installer and macOS disk images published from CI.
 - Recurring tasks showing as already completed when viewing a future day.
 - macOS CI builds failing while attempting to publish a release.
 
-[Unreleased]: https://github.com/ru55i4nblue/goal-setter/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/ru55i4nblue/goal-setter/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/ru55i4nblue/goal-setter/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/ru55i4nblue/goal-setter/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/ru55i4nblue/goal-setter/releases/tag/v1.0.0

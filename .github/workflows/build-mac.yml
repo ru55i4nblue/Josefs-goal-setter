@@ -1,13 +1,15 @@
 name: Build macOS app
 
-# Builds an unsigned Goal Setter .dmg on a cloud Mac.
-# Run it from the repo's "Actions" tab -> "Build macOS app" -> "Run workflow",
-# then download the .dmg from the run's "Artifacts" section.
+# Builds a Goal Setter .dmg on a cloud Mac for testing, WITHOUT publishing a
+# release. Run it from the repo's "Actions" tab -> "Build macOS app" ->
+# "Run workflow", then download the .dmg from the run's "Artifacts" section.
+#
+# Manual only: releases are cut by tagging (see release.yml). This used to run on
+# every push to main, which meant a tag push started this and the release build
+# at the same time — two concurrent macOS builds that intermittently failed.
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ main ]
 
 jobs:
   build-mac:

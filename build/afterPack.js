@@ -6,6 +6,11 @@
  * quarantine, it's the missing signature. An ad-hoc signature ("-") costs
  * nothing, needs no certificate, and satisfies that requirement. Users still see
  * the "unidentified developer" prompt once, which is expected.
+ *
+ * --deep is deprecated for *distribution* signing, but it is the correct tool
+ * here: an Electron bundle nests frameworks, helper apps and dylibs several
+ * levels down, and every one of them must be signed or the outer signature is
+ * invalid. Signing them piecemeal is what broke the previous attempt.
  */
 const { execFileSync } = require('child_process');
 const path = require('path');
@@ -17,34 +22,33 @@ exports.default = async function afterPack(context) {
   const appName = `${context.packager.appInfo.productFilename}.app`;
   const appPath = path.join(context.appOutDir, appName);
   if (!fs.existsSync(appPath)) {
-    console.warn(`[afterPack] ${appPath} not found, skipping ad-hoc signing`);
-    return;
+    throw new Error(`[afterPack] expected app at ${appPath} but it does not exist`);
   }
 
-  // Sign nested code first (frameworks, helpers), then the outer bundle.
-  const inner = [
-    'Contents/Frameworks/*.framework',
-    'Contents/Frameworks/*.dylib',
-    'Contents/Frameworks/*.app'
-  ];
-  for (const pattern of inner) {
-    const dir = path.join(appPath, path.dirname(pattern));
-    if (!fs.existsSync(dir)) continue;
-    for (const entry of fs.readdirSync(dir)) {
-      const ext = path.extname(entry);
-      if (!['.framework', '.dylib', '.app'].includes(ext)) continue;
-      sign(path.join(dir, entry));
-    }
-  }
-  sign(appPath);
-  console.log(`[afterPack] ad-hoc signed ${appName}`);
+  console.log(`[afterPack] ad-hoc signing ${appName} …`);
+  run('codesign', ['--force', '--deep', '--sign', '-', appPath]);
+
+  // Prove it worked here rather than discovering it on a user's Mac.
+  run('codesign', ['--verify', '--deep', '--strict', '--verbose=2', appPath]);
+  const info = capture('codesign', ['-dv', '--verbose=4', appPath]);
+  const adhoc = /Signature=adhoc/.test(info);
+  console.log(`[afterPack] signature present, adhoc=${adhoc}`);
+  if (!adhoc) throw new Error('[afterPack] app is not ad-hoc signed after signing');
+  console.log(`[afterPack] ${appName} signed and verified`);
 };
 
-function sign(target) {
+function run(cmd, args) {
   try {
-    execFileSync('codesign', ['--force', '--sign', '-', '--timestamp=none', target], { stdio: 'pipe' });
+    execFileSync(cmd, args, { stdio: 'inherit' });
   } catch (e) {
-    // keep going — the outer bundle signature is the one that matters most
-    console.warn(`[afterPack] could not sign ${path.basename(target)}: ${e.message}`);
+    throw new Error(`[afterPack] ${cmd} ${args.join(' ')} failed: ${e.message}`);
+  }
+}
+// codesign -dv writes to stderr, so capture both streams
+function capture(cmd, args) {
+  try {
+    return execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }) || '';
+  } catch (e) {
+    return `${e.stdout || ''}${e.stderr || ''}`;
   }
 }

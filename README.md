@@ -63,8 +63,9 @@ Everything you're working on, in one of two layouts you can switch between:
   date.
 
 Every task carries a **deliver-by date** (today by default), shown beside its
-weight and flagged when it's due today or overdue. Recurring tasks display only
-their **next uncompleted instance**, so the list never fills with repeats.
+weight with the **days remaining** and flagged when it's due today or overdue.
+Recurring tasks display only their **next uncompleted instance**, so the list never
+fills with repeats.
 
 ### Categories, including your own
 - Ships with **Weekly**, **Daily** and **Routine**, and you can **create your own**.
@@ -110,9 +111,10 @@ and choose which categories appear.
 
 ### Settings
 Choose your **date format** (eleven options, from `Sat, Jul 25` to
-`Saturday, 25th July`), set when the daily log is written, pick which categories
-reach the widget, show or hide weight notes and the import button, and toggle
-launch-at-startup.
+`Saturday, 25th July`) and whether deliver-by dates show the **days remaining**
+alongside them (`Tue, Jul 28 · in 3 days`), date only, or just the countdown. Set
+when the daily log is written, pick which categories reach the widget, show or hide
+weight notes and the import button, and toggle launch-at-startup.
 
 ### In & out
 - **Import a checklist** — paste from Notion or any markdown list
@@ -155,8 +157,9 @@ npm run build:web    # assemble the PWA          -> www/
 ```
 
 Releases are built automatically: pushing a `v*` tag runs a GitHub Actions
-workflow that produces the Windows installer and both macOS DMGs and attaches
-them to a GitHub Release.
+workflow that produces the Windows installer and both macOS DMGs, then attaches
+them to a GitHub Release whose notes are taken from that version's
+[CHANGELOG.md](CHANGELOG.md) section (`scripts/release-notes.js`).
 
 ### Self-hosting the sync backend
 

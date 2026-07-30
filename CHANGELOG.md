@@ -19,10 +19,16 @@ _Nothing yet._
 
 ### Fixed
 
-- macOS builds are ad-hoc signed correctly. The previous attempt signed Electron's
-  nested frameworks individually, which left their inner binaries unsigned and
-  invalidated the outer signature; the bundle is now signed as a whole and the
-  build verifies the result rather than shipping a broken app silently.
+- **macOS builds are ad-hoc signed correctly, so the app launches.** An earlier
+  attempt signed Electron's nested frameworks one at a time, which left their inner
+  binaries unsigned and invalidated the signature on the bundle as a whole. The
+  bundle is now signed in one pass and the build reports the result.
+
+### Changed
+
+- Release notes on GitHub are now generated from this changelog, so each release
+  lists exactly what changed since the previous one instead of repeating a generic
+  description.
 
 ## [2.1.0] — 2026-07-25
 

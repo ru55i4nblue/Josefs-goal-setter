@@ -51,21 +51,21 @@ jobs:
     needs: [mac, windows]
     runs-on: ubuntu-latest
     steps:
+      # needed for CHANGELOG.md + the notes script
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           merge-multiple: true
           path: files
+
+      # Build the release body from this version's CHANGELOG section, so each
+      # release lists exactly what changed since the previous one.
+      - name: Build release notes
+        run: node scripts/release-notes.js "${{ github.ref_name }}" > NOTES.md
+
       - uses: softprops/action-gh-release@v2
         with:
           files: files/*
           draft: ${{ github.event_name == 'workflow_dispatch' }}
-          generate_release_notes: true
-          body: |
-            **Goal Setter** — weighted goal & checklist tracker with satisfying progress
-            bars, daily/weekly/recurring tasks, an always-on-top widget, and live sync.
-
-            ### Downloads
-            - **Windows:** `Goal Setter Setup <version>.exe` — run it (SmartScreen: *More info → Run anyway*; the build is unsigned).
-            - **macOS (Apple Silicon):** `Goal Setter-<version>-arm64.dmg`
-            - **macOS (Intel):** `Goal Setter-<version>-x64.dmg`
-              First launch on macOS: right-click the app → **Open** (unsigned build).
+          body_path: NOTES.md

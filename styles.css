@@ -562,6 +562,87 @@ body.dark .checkbox.neon.checked::after { color: #08130c; }
 .due-badge.today { color: var(--purple); background: rgba(139,92,246,.15); font-weight: 700; }
 .due-badge.overdue { color: #e0584b; background: rgba(224,88,75,.14); font-weight: 700; }
 
+/* ===================== BLOCKED VIEW ===================== */
+/* Horizontal rail of category wells; blocks are weight-sized squares on a
+   6-unit grid with a 64px base unit, packed densely. */
+.block-rail {
+  display: flex; gap: 12px; overflow-x: auto;
+  padding: 2px 2px 12px; scroll-snap-type: x proximity;
+}
+.block-col { flex: 0 0 416px; scroll-snap-align: start; display: flex; flex-direction: column; gap: 8px; }
+
+.block-head {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 12px; border-radius: 8px;
+  font-size: 13px; font-weight: 600;
+  color: var(--c-ink); background: var(--c-soft);
+  border-left: 4px solid var(--c);
+}
+.block-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--c); flex-shrink: 0; }
+.block-name { flex: 1; }
+.block-count { font-size: 11px; font-variant-numeric: tabular-nums; opacity: .75; }
+.block-add {
+  background: none; border: none; cursor: pointer; color: inherit;
+  font-size: 15px; line-height: 1; padding: 2px 4px; border-radius: 5px; opacity: .7;
+}
+.block-add:hover { opacity: 1; background: var(--hover); }
+
+.block-well {
+  background: var(--bg-elev); border: 1px solid var(--border);
+  border-radius: 9px; padding: 7px; min-height: 300px;
+}
+.block-grid {
+  display: grid; grid-template-columns: repeat(6, 64px);
+  grid-auto-rows: 64px; gap: 4px; grid-auto-flow: dense;
+}
+.block-empty { font-size: 12px; color: var(--text-faint); font-style: italic; padding: 10px 4px; }
+
+.task-block {
+  border-radius: 7px; padding: 6px 8px; cursor: pointer; position: relative;
+  display: flex; flex-direction: column; justify-content: space-between;
+  overflow: hidden; border: 1px solid transparent;
+  background: var(--c-soft); color: var(--c-ink);
+  transition: filter .12s ease, transform .1s ease;
+}
+.task-block:hover { filter: brightness(1.06); }
+.task-block:active { transform: scale(.98); }
+.task-block.overdue { border: 2px solid var(--c); }
+.task-block.done { opacity: .5; }
+.task-block.done .tb-title { text-decoration: line-through; }
+
+.tb-top { min-width: 0; }
+.tb-title { font-weight: 600; line-height: 1.2; overflow: hidden; }
+.tb-note { font-size: 11px; line-height: 1.3; opacity: .8; margin-top: 3px; }
+.tb-foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 4px; }
+.tb-due { font-size: 11px; line-height: 1.2; opacity: .9; }
+.tb-w { font-size: 11px; font-variant-numeric: tabular-nums; opacity: .6; }
+.tb-edit {
+  position: absolute; top: 3px; right: 3px;
+  background: none; border: none; cursor: pointer; color: inherit;
+  font-size: 11px; padding: 2px 4px; border-radius: 4px; opacity: 0;
+}
+.task-block:hover .tb-edit { opacity: .8; }
+.tb-edit:hover { opacity: 1 !important; background: rgba(0, 0, 0, .1); }
+
+.s1 { grid-column: span 1; grid-row: span 1; }
+.s1 .tb-title { font-size: 11px; }
+.s1 .tb-due { font-size: 10px; }
+.s2 { grid-column: span 2; grid-row: span 2; }
+.s2 .tb-title { font-size: 12px; }
+.s3 { grid-column: span 3; grid-row: span 3; }
+.s3 .tb-title { font-size: 13px; }
+.s4 { grid-column: span 4; grid-row: span 4; }
+.s4 .tb-title { font-size: 14px; }
+.s5 { grid-column: span 6; grid-row: span 5; }
+.s5 .tb-title { font-size: 16px; }
+
+@media (max-width: 760px) {
+  .block-rail { flex-direction: column; overflow-x: visible; }
+  .block-col { flex: none; }
+  .block-well { min-height: 0; }
+  .block-grid { grid-template-columns: repeat(6, 1fr); grid-auto-rows: 52px; }
+}
+
 /* ===================== TASKMASTER ===================== */
 .page-taskmaster { padding: 26px 36px; overflow-y: auto; }
 .taskmaster-body { display: flex; flex-direction: column; gap: 22px; }
@@ -695,7 +776,12 @@ body.dark .checkbox.neon.checked::after { color: #08130c; }
 }
 .settings-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 .cat-manager { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
-/* Each row wears its category's colour, so a reorder is obvious at a glance. */
+/* A category's colour, plus a soft fill and a readable ink derived from it.
+   Both are mixed against --bg/--text, so they flip with the theme for free. */
+[class*="tint-"] {
+  --c-soft: color-mix(in srgb, var(--c) 14%, var(--bg));
+  --c-ink: color-mix(in srgb, var(--c) 68%, var(--text));
+}
 .tint-purple { --c: #8b5cf6; }
 .tint-neon   { --c: #16c46a; }
 .tint-blue   { --c: #3b82f6; }

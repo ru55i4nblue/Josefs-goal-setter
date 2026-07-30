@@ -215,6 +215,7 @@ function renderTaskArea() {
   document.querySelectorAll('.view-btn').forEach((b) =>
     b.classList.toggle('active', b.dataset.view === state.taskmasterView));
   if (state.taskmasterView === 'grouped') renderGroupedView(host);
+  else if (state.taskmasterView === 'blocked') renderBlockedView(host);
   else state.categories.forEach((cat) => host.appendChild(categoryBox(cat)));
 }
 

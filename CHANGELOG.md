@@ -7,7 +7,19 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- **Blocked view** — a third Taskmaster layout. Each category becomes a vertical
+  well that you scroll horizontally between, and every task is a square block whose
+  side is its weight: a weight-3 is one grid unit larger than a weight-2, and a
+  weight-5 spans the full width of its well. Blocks pack densely, so lighter tasks
+  tetris into the gaps beside heavier ones. Ordered soonest-deliver-by first with
+  overdue blocks led and outlined in red, and the largest blocks show their weight
+  note. Click a block to complete it. Routine, being weightless, renders at the
+  base size throughout.
+- **Days remaining** shown alongside deliver-by dates everywhere, with
+  **Settings → Deliver-by dates show** offering date and days, date only, or days
+  only. Counts are measured at local midnight, so "today" is always exact.
 
 ## [2.1.0] — 2026-07-25
 

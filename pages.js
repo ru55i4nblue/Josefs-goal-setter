@@ -57,7 +57,7 @@ function tmSection(label, rows, urgent) {
     const meta = el('div', 'tm-meta');
     meta.innerHTML = `<span class="tm-cat ${cat.color}">${escapeHtml(cat.name)}</span>`
       + (t.recurring ? `<span class="recur-badge">${escapeHtml(recurLabel(t))}</span>` : '')
-      + `<span class="tm-due">${escapeHtml(prettyDate(due))}</span>`;
+      + `<span class="tm-due${due < todayKey() ? ' overdue' : ''}">${escapeHtml(dueLabel(due))}</span>`;
     main.appendChild(meta);
     if (t.note && state.settings.showWeightNotes) {
       const note = el('div', 'task-note');
@@ -212,6 +212,15 @@ function renderSettings() {
     sel.appendChild(o);
   });
   sel.value = state.settings.dateFormat || DEFAULT_DATE_FORMAT;
+
+  const due = $('#setDueDisplay');
+  due.innerHTML = '';
+  DUE_DISPLAYS.forEach(([id, label]) => {
+    const o = document.createElement('option');
+    o.value = id; o.textContent = label;
+    due.appendChild(o);
+  });
+  due.value = state.settings.dueDisplay || 'both';
   updateDatePreview();
   const host = $('#widgetCatList');
   host.innerHTML = '';
@@ -229,9 +238,9 @@ function renderSettings() {
 
 // live sample of the chosen format, using today so it reads naturally
 function updateDatePreview() {
-  const tk = todayKey();
+  const sample = addDays(todayKey(), 3);
   $('#dateFormatPreview').textContent =
-    `Dates read as “${prettyDate(tk)}” · the sticky widget uses the compact “${shortDate(tk)}”`;
+    `A task due in three days reads as “${dueLabel(sample)}” · the sticky widget uses the compact “${shortDate(sample)} · ${relativeDueShort(sample)}”`;
 }
 
 /* ============================================================
@@ -882,13 +891,14 @@ function wire() {
   /* ---- settings ---- */
   $('#setShowImport').onchange = (e) => { state.settings.showImport = e.target.checked; save(); render(); };
   $('#setShowWeightNotes').onchange = (e) => { state.settings.showWeightNotes = e.target.checked; save(); render(); };
-  $('#setDateFormat').onchange = (e) => {
-    state.settings.dateFormat = e.target.value;
+  const applyDateSetting = () => {
     save();
     updateDatePreview();
     render();
     if (currentPage === 'calendar') renderCalendar();
   };
+  $('#setDateFormat').onchange = (e) => { state.settings.dateFormat = e.target.value; applyDateSetting(); };
+  $('#setDueDisplay').onchange = (e) => { state.settings.dueDisplay = e.target.value; applyDateSetting(); };
   $('#logTimeInput').value = state.logTime || '22:00';
   $('#logTimeInput').onchange = (e) => {
     const v = e.target.value;

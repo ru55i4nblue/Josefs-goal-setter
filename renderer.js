@@ -371,8 +371,8 @@ function taskRow(t, container, dateKey, cat) {
   const due = dueDateOf(t);
   const tk = todayKey();
   const dueBadge = el('span', 'due-badge' + (due < tk ? ' overdue' : due === tk ? ' today' : ''));
-  dueBadge.textContent = due === tk ? 'today' : prettyDate(due);   // the user's chosen format
-  dueBadge.title = 'Deliver by ' + prettyDate(due);
+  dueBadge.textContent = dueLabel(due);           // format + days remaining, per Settings
+  dueBadge.title = `Deliver by ${prettyDate(due)} · ${relativeDue(due)}`;
   row.appendChild(dueBadge);
 
   // Routine is weightless by design — no score, no badge.
@@ -504,7 +504,7 @@ function pushWidget() {
       tasks: tasks.map((t) => ({
         id: t.id, kind: c.id, title: t.title, done: t.done,
         weight: catHasWeight(c.id) ? t.weight : null,
-        due: dueDateOf(t) === dateKey ? 'today' : shortDate(dueDateOf(t)),  // widget is tiny — compact form
+        due: relativeDueShort(dueDateOf(t)),        // widget is tiny — compact form
 
         overdue: dueDateOf(t) < dateKey
       }))

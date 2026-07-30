@@ -587,6 +587,7 @@ body.dark .checkbox.neon.checked::after { color: #08130c; }
 .tm-cat.blue { color: #3b82f6; } .tm-cat.amber { color: #f59e0b; }
 .tm-cat.pink { color: #ec4899; } .tm-cat.teal { color: #14b8a6; }
 .tm-due { color: var(--text-faint); margin-left: auto; }
+.tm-due.overdue { color: #e0584b; font-weight: 700; }
 .tm-row .row-edit { opacity: 0; }
 .tm-row:hover .row-edit { opacity: 1; }
 

@@ -76,6 +76,41 @@ const formatSample = (id) => {
   const f = DATE_FORMATS.find((x) => x.id === id) || DATE_FORMATS[0];
   return f.full(dateParts('2026-07-25'));
 };
+
+/* ---------- how far away a deliver-by date is ---------- */
+// Compared at local midnight so a task due "today" reads as 0 regardless of clock
+// time, and DST shifts can't push a count off by one.
+function daysUntil(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  const [ty, tm, td] = todayKey().split('-').map(Number);
+  return Math.round((new Date(y, m - 1, d) - new Date(ty, tm - 1, td)) / 864e5);
+}
+function relativeDue(key) {
+  const n = daysUntil(key);
+  if (n === 0) return 'today';
+  if (n === 1) return 'tomorrow';
+  if (n === -1) return 'yesterday · overdue';
+  if (n < 0) return `${-n} days overdue`;
+  return `in ${n} days`;
+}
+// Compact form for the sticky widget, which has very little room.
+function relativeDueShort(key) {
+  const n = daysUntil(key);
+  if (n === 0) return 'today';
+  return n < 0 ? `${-n}d over` : `${n}d`;
+}
+
+const DUE_DISPLAYS = [
+  ['both', 'Date and days remaining'],
+  ['date', 'Date only'],
+  ['days', 'Days remaining only']
+];
+function dueLabel(key) {
+  const mode = (state.settings && state.settings.dueDisplay) || 'both';
+  if (mode === 'date') return prettyDate(key);
+  if (mode === 'days') return relativeDue(key);
+  return `${prettyDate(key)} · ${relativeDue(key)}`;
+}
 function weekKeyFromKey(key) {
   const [y, m, d] = key.split('-').map(Number);
   return weekKey(new Date(y, m - 1, d));
@@ -116,7 +151,10 @@ function defaultState() {
     dailyArchive: [],   // [{date, tasks:[snapshot]}]
     weeklyArchive: [],  // [{week, tasks:[snapshot]}]
     dayOrders: {},      // { 'YYYY-MM-DD': { taskId: index } } — per-day manual order
-    settings: { showImport: true, showWeightNotes: true, dateFormat: DEFAULT_DATE_FORMAT },
+    settings: {
+      showImport: true, showWeightNotes: true,
+      dateFormat: DEFAULT_DATE_FORMAT, dueDisplay: 'both'
+    },
     taskmasterView: 'categories',   // 'categories' (per-category boxes) | 'grouped' (one due-today box)
     lastDay: todayKey(),
     lastWeek: weekKey(),
@@ -154,6 +192,7 @@ function migrate(s) {
   if (typeof s.settings.showImport !== 'boolean') s.settings.showImport = true;
   if (typeof s.settings.showWeightNotes !== 'boolean') s.settings.showWeightNotes = true;
   if (!DATE_FORMATS.some((f) => f.id === s.settings.dateFormat)) s.settings.dateFormat = DEFAULT_DATE_FORMAT;
+  if (!DUE_DISPLAYS.some(([id]) => id === s.settings.dueDisplay)) s.settings.dueDisplay = 'both';
   if (s.taskmasterView !== 'grouped') s.taskmasterView = 'categories';
 
   // --- fold the old v1 arrays into the unified task list (once) ---

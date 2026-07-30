@@ -193,7 +193,7 @@ function migrate(s) {
   if (typeof s.settings.showWeightNotes !== 'boolean') s.settings.showWeightNotes = true;
   if (!DATE_FORMATS.some((f) => f.id === s.settings.dateFormat)) s.settings.dateFormat = DEFAULT_DATE_FORMAT;
   if (!DUE_DISPLAYS.some(([id]) => id === s.settings.dueDisplay)) s.settings.dueDisplay = 'both';
-  if (!['categories', 'grouped', 'blocked'].includes(s.taskmasterView)) s.taskmasterView = 'categories';
+  if (s.taskmasterView !== 'grouped') s.taskmasterView = 'categories';
 
   // --- fold the old v1 arrays into the unified task list (once) ---
   const today = s.lastDay || todayKey();

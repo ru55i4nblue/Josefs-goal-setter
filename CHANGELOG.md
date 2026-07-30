@@ -9,17 +9,16 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ### Added
 
-- **Blocked view** — a third Taskmaster layout. Each category becomes a vertical
-  well that you scroll horizontally between, and every task is a square block whose
-  side is its weight: a weight-3 is one grid unit larger than a weight-2, and a
-  weight-5 spans the full width of its well. Blocks pack densely, so lighter tasks
-  tetris into the gaps beside heavier ones. Ordered soonest-deliver-by first with
-  overdue blocks led and outlined in red, and the largest blocks show their weight
-  note. Click a block to complete it. Routine, being weightless, renders at the
-  base size throughout.
-- **Days remaining** shown alongside deliver-by dates everywhere, with
+- **Days remaining** shown alongside deliver-by dates, with
   **Settings → Deliver-by dates show** offering date and days, date only, or days
   only. Counts are measured at local midnight, so "today" is always exact.
+
+### Fixed
+
+- macOS builds are ad-hoc signed correctly. The previous attempt signed Electron's
+  nested frameworks individually, which left their inner binaries unsigned and
+  invalidated the outer signature; the bundle is now signed as a whole and the
+  build verifies the result rather than shipping a broken app silently.
 
 ## [2.1.0] — 2026-07-25
 

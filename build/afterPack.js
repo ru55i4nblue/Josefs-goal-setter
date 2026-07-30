@@ -12,7 +12,7 @@
  * levels down, and every one of them must be signed or the outer signature is
  * invalid. Signing them piecemeal is what broke the previous attempt.
  */
-const { execFileSync } = require('child_process');
+const { execFileSync, spawnSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
@@ -48,11 +48,10 @@ function run(cmd, args) {
     throw new Error(`[afterPack] ${cmd} ${args.join(' ')} failed: ${e.message}`);
   }
 }
-// codesign -dv writes to stderr, so capture both streams
+// codesign writes its report to STDERR, and execFileSync only returns stdout on
+// success — reading stdout alone came back empty and made a signed app look
+// unsigned. spawnSync hands back both streams.
 function capture(cmd, args) {
-  try {
-    return execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }) || '';
-  } catch (e) {
-    return `${e.stdout || ''}${e.stderr || ''}`;
-  }
+  const r = spawnSync(cmd, args, { encoding: 'utf8' });
+  return `${r.stdout || ''}${r.stderr || ''}`;
 }

@@ -13,7 +13,9 @@ on:
 
 jobs:
   build-mac:
-    runs-on: macos-latest
+    # Intel runner — see the note in release.yml: electron-builder's DMG step
+    # fails on Apple Silicon runners when cross-building the x64 image.
+    runs-on: macos-13
     steps:
       - uses: actions/checkout@v4
 

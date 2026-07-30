@@ -17,7 +17,7 @@ Grab the installer from the **latest** entry on the
 | --- | --- | --- |
 | **Windows** | `Goal Setter Setup <version>.exe` | Run the installer. SmartScreen may warn (the build is unsigned) — click **More info → Run anyway**. |
 | **macOS (Apple Silicon)** | `Goal Setter-<version>-arm64.dmg` | Open the DMG, drag **Goal Setter** into **Applications**. |
-| **macOS (Intel)** | `Goal Setter-<version>-x64.dmg` | Same as above. |
+| **macOS (Intel)** | `Goal Setter-<version>-mac.zip` | Unzip it, drag **Goal Setter** into **Applications**. |
 
 **First launch on macOS.** The app is ad-hoc signed but not notarised (that needs a
 paid Apple Developer account), so macOS asks once:

@@ -13,9 +13,7 @@ on:
 
 jobs:
   build-mac:
-    # Intel runner — see the note in release.yml: electron-builder's DMG step
-    # fails on Apple Silicon runners when cross-building the x64 image.
-    runs-on: macos-13
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -31,6 +29,8 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: goal-setter-macos-dmg
-          path: dist/*.dmg
+          name: goal-setter-macos
+          path: |
+            dist/*.dmg
+            dist/*-mac.zip
           if-no-files-found: error

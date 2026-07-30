@@ -49,11 +49,11 @@ console.log(`
 
 ### Downloads
 
-| Platform | File |
-| --- | --- |
-| Windows | \`Goal Setter Setup ${version}.exe\` — SmartScreen may warn (unsigned build): **More info → Run anyway** |
-| macOS (Apple Silicon) | \`Goal Setter-${version}-arm64.dmg\` |
-| macOS (Intel) | \`Goal Setter-${version}-x64.dmg\` |
+| Platform | File | How to install |
+| --- | --- | --- |
+| Windows | \`Goal Setter Setup ${version}.exe\` | Run it. SmartScreen may warn (unsigned build): **More info → Run anyway** |
+| macOS (Apple Silicon) | \`Goal Setter-${version}-arm64.dmg\` | Open it, drag **Goal Setter** to **Applications** |
+| macOS (Intel) | \`Goal Setter-${version}-mac.zip\` | Unzip, drag **Goal Setter** to **Applications** |
 
 On macOS the build is ad-hoc signed but not notarised, so you'll get one
 "unidentified developer" prompt. On macOS 15 and later allow it via

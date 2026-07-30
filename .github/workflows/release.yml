@@ -14,11 +14,7 @@ permissions:
 
 jobs:
   mac:
-    # Intel runner on purpose. macos-latest is Apple Silicon, and electron-builder's
-    # DMG step fails there when it cross-builds the x64 image — `hdiutil detach`
-    # errors with "No such file or directory" after exhausting its retries. An
-    # Intel host builds both the arm64 and x64 DMGs without that fault.
-    runs-on: macos-13
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,10 +24,16 @@ jobs:
       - run: npm run dist:mac
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
+      # Apple Silicon gets a .dmg; Intel gets a .zip. electron-builder's DMG step
+      # fails when it cross-builds the x64 image on an Apple Silicon runner
+      # (hdiutil detach: "No such file or directory"), and the Intel runners that
+      # avoid it now queue for tens of minutes. A zip needs no hdiutil at all.
       - uses: actions/upload-artifact@v4
         with:
-          name: mac-dmg
-          path: dist/*.dmg
+          name: mac-builds
+          path: |
+            dist/*.dmg
+            dist/*-mac.zip
           if-no-files-found: error
 
   windows:

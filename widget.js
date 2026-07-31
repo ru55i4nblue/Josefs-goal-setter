@@ -17,7 +17,7 @@ function taskRow(t, color) {
   due.textContent = t.due || '';
 
   const badge = document.createElement('span');
-  badge.className = 'wbadge';
+  badge.className = 'wbadge' + (t.weight == null ? '' : ' w' + t.weight);
   badge.textContent = t.weight == null ? '' : '×' + t.weight;
 
   row.onclick = () => {

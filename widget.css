@@ -7,6 +7,12 @@
   --track: #e9e9e7;
   --purple: #8b5cf6;
   --neon: #2bff88;
+
+  /* Mirrors the chip tokens in styles.css — --text-faint is only ~2.9:1 here. */
+  --chip-text: #55534e;
+  --accent-text: #6d28d9;
+  --accent-tint: rgba(139, 92, 246, .14);
+  --danger-text: #b02a1e;
 }
 body.dark {
   --bg: #202020;
@@ -15,6 +21,11 @@ body.dark {
   --text-faint: #6f6f6c;
   --border: #2f2f2f;
   --track: #333;
+
+  --chip-text: #b9b8b4;
+  --accent-text: #c4b5fd;
+  --accent-tint: rgba(139, 92, 246, .22);
+  --danger-text: #ff9c92;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -91,11 +102,19 @@ body {
 body.dark .box.done.neon::after { color: #08130c; }
 .wname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
 .wtask.done .wname { color: var(--text-faint); text-decoration: line-through; }
-.wbadge { font-size: 10px; color: var(--text-faint); flex-shrink: 0; }
-.wdue {
-  font-size: 9.5px; color: var(--text-faint); flex-shrink: 0;
+.wbadge {
+  font-size: 11px; font-weight: 700; color: var(--chip-text); flex-shrink: 0;
   font-variant-numeric: tabular-nums;
 }
-.wdue.today { color: var(--purple); font-weight: 700; }
-.wdue.overdue { color: #e0584b; font-weight: 700; }
+/* Heavy tasks earn a pill so they stand out in a glanceable widget. */
+.wbadge.w4, .wbadge.w5 {
+  color: var(--accent-text); background: var(--accent-tint);
+  padding: 1px 5px; border-radius: 999px;
+}
+.wdue {
+  font-size: 11px; font-weight: 600; color: var(--chip-text); flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+.wdue.today { color: var(--accent-text); font-weight: 700; }
+.wdue.overdue { color: var(--danger-text); font-weight: 700; }
 .empty { color: var(--text-faint); font-size: 11.5px; font-style: italic; }

@@ -7,7 +7,18 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
-_Nothing yet._
+### Changed
+
+- **Deliver-by dates and weights are readable and prominent.** Every one of these
+  chips previously failed the WCAG AA contrast minimum in both themes — the plain
+  deliver-by badge sat at 2.3:1 in light mode and 2.7:1 in dark, at 10.5px. They now
+  measure between 4.8:1 and 9.5:1 across the Taskmaster, Calendar, Archives and the
+  sticky widget, at 12px, with the date and the number both bolder.
+- **Weight now reads as a ramp you can scan without reading the number:** 1–2 stay
+  quiet, 3 is tinted, 4–5 are filled purple. Only 4 and 5 used to be distinguished.
+- On phones the weight and deliver-by chips **drop to their own line** beneath the
+  task title. They never shrink, so at narrow widths they had been squeezing the
+  title down to nothing.
 
 ## [2.2.0] — 2026-07-31
 

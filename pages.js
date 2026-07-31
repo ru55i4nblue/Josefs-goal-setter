@@ -57,7 +57,7 @@ function tmSection(label, rows, urgent) {
     const meta = el('div', 'tm-meta');
     meta.innerHTML = `<span class="tm-cat ${cat.color}">${escapeHtml(cat.name)}</span>`
       + (t.recurring ? `<span class="recur-badge">${escapeHtml(recurLabel(t))}</span>` : '')
-      + `<span class="tm-due${due < todayKey() ? ' overdue' : ''}">${escapeHtml(dueLabel(due))}</span>`;
+      + `<span class="tm-due${due < todayKey() ? ' overdue' : due === todayKey() ? ' today' : ''}">${escapeHtml(dueLabel(due))}</span>`;
     main.appendChild(meta);
     if (t.note && state.settings.showWeightNotes) {
       const note = el('div', 'task-note');

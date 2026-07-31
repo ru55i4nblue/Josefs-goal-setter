@@ -19,6 +19,20 @@
 
   --shadow: 0 1px 3px rgba(15, 15, 15, 0.08), 0 4px 16px rgba(15, 15, 15, 0.06);
   --radius: 8px;
+
+  /* Chip tokens for deliver-by and weight. Held separately from --purple /
+     --text-soft because the raw brand colours fail AA as small text on their
+     own tints (measured 2.3–3.7:1); each theme needs its own value. */
+  --chip-bg: #e7e7e4;
+  --chip-text: #55534e;
+  --accent-text: #6d28d9;
+  --accent-tint: rgba(139, 92, 246, .14);
+  --accent-line: rgba(139, 92, 246, .40);
+  --accent-solid: #7c3aed;
+  --accent-solid-text: #ffffff;
+  --danger-text: #b02a1e;
+  --danger-tint: rgba(224, 88, 75, .13);
+  --danger-line: rgba(224, 88, 75, .45);
 }
 
 body.dark {
@@ -34,6 +48,17 @@ body.dark {
   --track: #2e2e2e;
   --modal-backdrop: rgba(0, 0, 0, 0.6);
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 6px 22px rgba(0, 0, 0, 0.45);
+
+  --chip-bg: #323232;
+  --chip-text: #b9b8b4;
+  --accent-text: #c4b5fd;
+  --accent-tint: rgba(139, 92, 246, .22);
+  --accent-line: rgba(167, 139, 250, .45);
+  --accent-solid: #a78bfa;      /* light fill + dark text: white on purple is only 2.7:1 here */
+  --accent-solid-text: #16072e;
+  --danger-text: #ff9c92;
+  --danger-tint: rgba(224, 88, 75, .20);
+  --danger-line: rgba(255, 156, 146, .40);
 }
 
 * { box-sizing: border-box; }
@@ -235,9 +260,11 @@ body.dark .checkbox.weekly.checked::after { color: #08130c; }
 .task-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .weight-badge {
   flex-shrink: 0;
-  font-size: 11px; font-weight: 600;
-  padding: 2px 7px; border-radius: 999px;
-  background: var(--track); color: var(--text-soft);
+  font-size: 12px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 2px 8px; border-radius: 999px;
+  background: var(--chip-bg); color: var(--chip-text);
+  border: 1px solid transparent;
 }
 .recur-badge { font-size: 10px; color: var(--text-faint); flex-shrink: 0; }
 .row-edit, .row-del {
@@ -392,15 +419,15 @@ body.dark .vtick { background: #000; opacity: .35; }
 .cal-daynum { font-size: 12px; font-weight: 600; color: var(--text-soft); }
 .cal-cell.today .cal-daynum { color: var(--purple); }
 .cal-pill {
-  font-size: 10.5px; line-height: 1.3; padding: 1px 5px; border-radius: 4px;
+  font-size: 11.5px; line-height: 1.35; padding: 1px 5px; border-radius: 4px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  background: var(--track); color: var(--text-soft);
+  background: var(--chip-bg); color: var(--chip-text);
 }
 .cal-pill.editable { cursor: pointer; }
 .cal-pill.editable:hover { outline: 1px solid var(--purple); }
-.cal-pill.w-hi { background: rgba(139,92,246,.18); color: var(--purple); font-weight: 600; }
+.cal-pill.w-hi { background: var(--accent-tint); color: var(--accent-text); font-weight: 700; }
 .cal-pill.done { text-decoration: line-through; opacity: .6; }
-.cal-pill.weekly { background: rgba(43,255,136,.16); color: #11a35d; }
+.cal-pill.weekly { background: rgba(43,255,136,.16); color: #0b7a44; font-weight: 600; }
 body.dark .cal-pill.weekly { color: var(--neon); }
 .cal-more { font-size: 10px; color: var(--text-faint); }
 
@@ -509,8 +536,15 @@ body.dark .checkbox.neon.checked::after { color: #08130c; }
   font-size: 11.5px; color: var(--text-faint); line-height: 1.35;
   margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+/* Weight is the premise of the app, so it reads as a three-step ramp you can
+   scan without reading the number: 1–2 quiet · 3 tinted · 4–5 filled. */
+.weight-badge.w3 {
+  background: var(--accent-tint); color: var(--accent-text);
+  border-color: var(--accent-line);
+}
 .weight-badge.w4, .weight-badge.w5 {
-  background: rgba(139, 92, 246, .18); color: var(--purple); font-weight: 700;
+  background: var(--accent-solid); color: var(--accent-solid-text);
+  border-color: var(--accent-solid);
 }
 .weight-pick-5 { gap: 5px; }
 .weight-pick-5 .w-btn { padding: 8px 0; }
@@ -553,14 +587,22 @@ body.dark .checkbox.neon.checked::after { color: #08130c; }
 .upcoming-list { opacity: .92; }
 
 .due-badge {
-  flex-shrink: 0; font-size: 10.5px; font-variant-numeric: tabular-nums;
-  color: var(--text-faint); padding: 2px 7px; border-radius: 999px;
-  background: var(--track); white-space: nowrap;
+  flex-shrink: 0; font-size: 12px; font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--chip-text); padding: 2px 8px; border-radius: 999px;
+  background: var(--chip-bg); white-space: nowrap;
+  border: 1px solid transparent;
 }
 .purge-btn { opacity: 1 !important; margin-left: 4px; }
 .clear-deleted { margin-top: 12px; font-size: 12.5px; padding: 6px 12px; }
-.due-badge.today { color: var(--purple); background: rgba(139,92,246,.15); font-weight: 700; }
-.due-badge.overdue { color: #e0584b; background: rgba(224,88,75,.14); font-weight: 700; }
+.due-badge.today {
+  color: var(--accent-text); background: var(--accent-tint);
+  border-color: var(--accent-line); font-weight: 700;
+}
+.due-badge.overdue {
+  color: var(--danger-text); background: var(--danger-tint);
+  border-color: var(--danger-line); font-weight: 700;
+}
 
 /* ===================== TASKMASTER ===================== */
 .page-taskmaster { padding: 26px 36px; overflow-y: auto; }
@@ -579,15 +621,19 @@ body.dark .checkbox.neon.checked::after { color: #08130c; }
 .tm-row + .tm-row { border-top: 1px solid var(--border); }
 .tm-row:hover { background: var(--hover); }
 .tm-row.done .task-name { color: var(--text-faint); text-decoration: line-through; }
-.tm-meta { display: flex; align-items: center; gap: 8px; margin-top: 2px; font-size: 11px; }
+.tm-meta { display: flex; align-items: center; gap: 8px; margin-top: 2px; font-size: 12px; }
 .tm-cat { font-weight: 600; }
 .tm-cat.neon { color: #12a35c; } body.dark .tm-cat.neon { color: var(--neon); }
 .tm-cat.purple { color: var(--purple); }
 .tm-cat.gray { color: var(--text-faint); }
 .tm-cat.blue { color: #3b82f6; } .tm-cat.amber { color: #f59e0b; }
 .tm-cat.pink { color: #ec4899; } .tm-cat.teal { color: #14b8a6; }
-.tm-due { color: var(--text-faint); margin-left: auto; }
-.tm-due.overdue { color: #e0584b; font-weight: 700; }
+.tm-due {
+  color: var(--chip-text); margin-left: auto;
+  font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.tm-due.today { color: var(--accent-text); font-weight: 700; }
+.tm-due.overdue { color: var(--danger-text); font-weight: 700; }
 .tm-row .row-edit { opacity: 0; }
 .tm-row:hover .row-edit { opacity: 1; }
 
@@ -868,7 +914,27 @@ body.dark .tint-neon { --c: #2bff88; }
   /* secondary pages */
   .page-calendar, .page-archives { padding: 18px 16px; }
   .cal-cell { min-height: 60px; padding: 4px 5px; }
-  .cal-pill { font-size: 9.5px; }
+  .cal-pill { font-size: 10.5px; }
   .cal-header { flex-direction: column; align-items: flex-start; gap: 10px; }
   .modal { width: 100%; }
+
+  /* The weight and deliver-by chips don't shrink, so on a phone they used to
+     squeeze the title down to nothing. Drop them onto their own line under it,
+     indented past the checkbox, instead of competing for the same row. */
+  .task-row { flex-wrap: wrap; row-gap: 2px; padding-bottom: 7px; }
+  .task-row > .drag-handle,
+  .task-row > .checkbox,
+  .task-row > .task-main,
+  .task-row > .row-edit,
+  .task-row > .row-del { order: 1; }
+  .task-row::after { content: ''; flex-basis: 100%; height: 0; order: 2; }
+  .task-row > .recur-badge,
+  .task-row > .due-badge,
+  .task-row > .weight-badge { order: 3; }
+  /* indent whichever chip lands first on the second line, past the checkbox */
+  .task-row > .recur-badge,
+  .task-row > .due-badge { margin-left: 47px; }
+  .task-row > .recur-badge + .due-badge { margin-left: 0; }
+  /* nothing hovers on touch, so the row actions stay visible */
+  .task-row .row-edit, .task-row .row-del, .task-row .drag-handle { opacity: .55; }
 }

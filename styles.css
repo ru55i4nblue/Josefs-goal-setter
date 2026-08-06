@@ -777,6 +777,9 @@ body.dark .tint-neon { --c: #2bff88; }
 .cat-new-row { display: flex; gap: 8px; }
 .cat-new-row .text-input { flex: 1; }
 .widget-cat-list { display: flex; flex-direction: column; gap: 2px; }
+/* a 1–12 count doesn't need the full field width */
+.widget-top-input { width: 92px; font-variant-numeric: tabular-nums; }
+#widgetTopRow .modal-hint { margin-top: 8px; }
 .date-preview {
   margin-top: 8px; font-size: 12px; color: var(--text-faint);
   background: var(--bg); border: 1px solid var(--border);

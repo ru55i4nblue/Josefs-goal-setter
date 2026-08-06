@@ -222,6 +222,42 @@ function renderSettings() {
   });
   due.value = state.settings.dueDisplay || 'both';
   updateDatePreview();
+  renderWidgetSettings();
+}
+
+function renderWidgetSettings() {
+  const mode = state.settings.widgetMode || 'categories';
+
+  const ms = $('#setWidgetMode');
+  ms.innerHTML = '';
+  WIDGET_MODES.forEach(([id, label]) => {
+    const o = document.createElement('option');
+    o.value = id; o.textContent = label;
+    ms.appendChild(o);
+  });
+  ms.value = mode;
+
+  // "single" picks one category outright; the others draw from the ticked list
+  $('#widgetSingleRow').classList.toggle('hidden', mode !== 'single');
+  $('#widgetTopRow').classList.toggle('hidden', mode !== 'top');
+  $('#widgetCatWrap').classList.toggle('hidden', mode === 'single');
+  $('#widgetCatHint').textContent = mode === 'top'
+    ? 'The shortlist is drawn from these categories (also set per category on the Create page).'
+    : 'Each ticked category gets its own section on the widget (also set per category on the Create page).';
+
+  const cs = $('#setWidgetCategory');
+  cs.innerHTML = '';
+  state.categories.forEach((c) => {
+    const o = document.createElement('option');
+    o.value = c.id; o.textContent = c.name;
+    cs.appendChild(o);
+  });
+  // the saved category can have been deleted since; show what pushWidget will fall back to
+  cs.value = getCat(state.settings.widgetCategory) ? state.settings.widgetCategory
+    : (state.categories[0] ? state.categories[0].id : '');
+
+  $('#setWidgetTop').value = state.settings.widgetTop || 5;
+
   const host = $('#widgetCatList');
   host.innerHTML = '';
   state.categories.forEach((c) => {
@@ -899,6 +935,24 @@ function wire() {
   };
   $('#setDateFormat').onchange = (e) => { state.settings.dateFormat = e.target.value; applyDateSetting(); };
   $('#setDueDisplay').onchange = (e) => { state.settings.dueDisplay = e.target.value; applyDateSetting(); };
+
+  /* ---- widget layout ---- */
+  $('#setWidgetMode').onchange = (e) => {
+    state.settings.widgetMode = e.target.value;
+    save(); renderWidgetSettings(); pushWidget();
+  };
+  $('#setWidgetCategory').onchange = (e) => {
+    state.settings.widgetCategory = e.target.value;
+    save(); pushWidget();
+  };
+  $('#setWidgetTop').oninput = (e) => {
+    const n = Math.round(Number(e.target.value));
+    if (!n) return;                                   // mid-edit empty field — wait for a number
+    state.settings.widgetTop = Math.max(WIDGET_TOP_MIN, Math.min(WIDGET_TOP_MAX, n));
+    save(); pushWidget();
+  };
+  // snap a typed-out-of-range value back once the field is left
+  $('#setWidgetTop').onblur = () => { $('#setWidgetTop').value = state.settings.widgetTop; };
   $('#logTimeInput').value = state.logTime || '22:00';
   $('#logTimeInput').onchange = (e) => {
     const v = e.target.value;

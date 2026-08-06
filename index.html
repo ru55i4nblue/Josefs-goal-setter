@@ -243,9 +243,27 @@
 
       <section class="create-card settings-card">
         <h2 class="create-h2">Widget</h2>
-        <p class="modal-hint">Choose which categories appear on the floating sticky widget
-          (set per category on the Create page).</p>
-        <div id="widgetCatList" class="widget-cat-list"></div>
+
+        <label class="field-label">The sticky widget shows</label>
+        <select id="setWidgetMode" class="text-input"></select>
+
+        <div id="widgetSingleRow" class="hidden">
+          <label class="field-label">Category</label>
+          <select id="setWidgetCategory" class="text-input"></select>
+        </div>
+
+        <div id="widgetTopRow" class="hidden">
+          <label class="field-label">How many tasks</label>
+          <input id="setWidgetTop" class="text-input widget-top-input"
+                 type="number" min="1" max="12" step="1" />
+          <p class="modal-hint">Ranked unfinished first, then overdue, then due today,
+            then heaviest. Routine carries no weight, so it sits last.</p>
+        </div>
+
+        <div id="widgetCatWrap">
+          <p class="modal-hint" id="widgetCatHint"></p>
+          <div id="widgetCatList" class="widget-cat-list"></div>
+        </div>
       </section>
     </main>
   </div>

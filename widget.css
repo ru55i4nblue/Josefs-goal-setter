@@ -69,13 +69,25 @@ body {
   color: var(--text-faint); font-weight: 700; margin-bottom: 6px;
 }
 .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-.dot.neon { background: var(--neon); box-shadow: 0 0 6px rgba(43,255,136,.5); }
-.dot.purple { background: var(--purple); box-shadow: 0 0 6px rgba(139,92,246,.5); }
-.dot.gray { background: var(--text-faint); }
-.dot.blue { background: #3b82f6; } .dot.amber { background: #f59e0b; }
-.dot.pink { background: #ec4899; } .dot.teal { background: #14b8a6; }
+/* On white the vivid palette all but vanishes — neon measured 1.33:1, well under
+   the 3:1 floor for a non-text indicator. Light mode gets darkened variants; dark
+   mode keeps the vivid ones below. The dot IS the category signal on a merged
+   list, so it has to survive on both backgrounds. */
+.dot.neon { background: #0f8f50; }
+.dot.purple { background: var(--purple); }
+.dot.gray { background: #7b7a77; }
+.dot.blue { background: #3b82f6; } .dot.amber { background: #a86a04; }
+.dot.pink { background: #ec4899; } .dot.teal { background: #0d7d70; }
 .dot.red { background: #ef4444; }
+
+body.dark .dot.neon { background: var(--neon); box-shadow: 0 0 6px rgba(43,255,136,.5); }
+body.dark .dot.purple { box-shadow: 0 0 6px rgba(139,92,246,.5); }
+body.dark .dot.gray { background: var(--text-faint); }
+body.dark .dot.amber { background: #f59e0b; }
+body.dark .dot.teal { background: #14b8a6; }
 .pct { margin-left: auto; font-variant-numeric: tabular-nums; }
+/* the merged list spans categories, so it counts rather than showing a percentage */
+.sec-note { margin-left: auto; color: var(--chip-text); font-variant-numeric: tabular-nums; }
 .neon-text { color: #12a35c; } body.dark .neon-text { color: var(--neon); }
 .purple-text { color: var(--purple); }
 
@@ -100,6 +112,8 @@ body {
   align-items: center; justify-content: center; font-size: 9px; color: #fff; font-weight: 700;
 }
 body.dark .box.done.neon::after { color: #08130c; }
+/* category marker on a merged list; hugs the name so it costs little width */
+.wdot { width: 7px; height: 7px; flex-shrink: 0; margin-right: -4px; }
 .wname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
 .wtask.done .wname { color: var(--text-faint); text-decoration: line-through; }
 .wbadge {

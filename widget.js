@@ -1,12 +1,22 @@
 const $ = (s) => document.querySelector(s);
 
-function taskRow(t, color) {
+function taskRow(t, color, showCat) {
   const row = document.createElement('div');
   row.className = 'wtask clickable' + (t.done ? ' done' : '');
-  row.title = 'Click to check off';
+  // two categories can share a palette colour, so name it on hover as well
+  row.title = (showCat && t.cat ? t.cat + ' · ' : '') + 'Click to check off';
 
   const box = document.createElement('span');
-  box.className = `box ${color}` + (t.done ? ' done' : '');
+  // in a merged list each row carries its own category colour
+  box.className = `box ${t.color || color}` + (t.done ? ' done' : '');
+
+  // the checkbox only shows its colour once ticked, so an unticked row needs
+  // its own marker — solid fill reads far better than a hairline border would
+  let dot = null;
+  if (showCat) {
+    dot = document.createElement('span');
+    dot.className = `wdot dot ${t.color || color}`;
+  }
 
   const name = document.createElement('span');
   name.className = 'wname';
@@ -28,6 +38,7 @@ function taskRow(t, color) {
   };
 
   row.appendChild(box);
+  if (dot) row.appendChild(dot);
   row.appendChild(name);
   row.appendChild(due);
   if (badge.textContent) row.appendChild(badge);
@@ -40,12 +51,17 @@ function buildSection(sec) {
 
   const head = document.createElement('div');
   head.className = 'sec-head';
-  head.innerHTML = `<span class="dot ${sec.color}"></span> ${sec.label}`;
+  head.innerHTML = (sec.dot === false ? '' : `<span class="dot ${sec.color}"></span> `) + sec.label;
   if (typeof sec.pct === 'number') {
     const pct = document.createElement('span');
     pct.className = 'pct ' + (sec.color === 'neon' ? 'neon-text' : 'purple-text');
     pct.textContent = sec.pct + '%';
     head.appendChild(pct);
+  } else if (sec.note) {
+    const note = document.createElement('span');
+    note.className = 'sec-note';
+    note.textContent = sec.note;
+    head.appendChild(note);
   }
   wrap.appendChild(head);
 
@@ -57,7 +73,7 @@ function buildSection(sec) {
     e.textContent = '—';
     tasks.appendChild(e);
   } else {
-    sec.tasks.forEach((t) => tasks.appendChild(taskRow(t, sec.color)));
+    sec.tasks.forEach((t) => tasks.appendChild(taskRow(t, sec.color, !!sec.showTaskCats)));
   }
   wrap.appendChild(tasks);
   return wrap;

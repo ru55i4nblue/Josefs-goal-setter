@@ -111,6 +111,17 @@ function dueLabel(key) {
   if (mode === 'days') return relativeDue(key);
   return `${prettyDate(key)} · ${relativeDue(key)}`;
 }
+/* ---------- how the sticky widget condenses itself ---------- */
+// A stack of category boxes gets unwieldy once there are more than two or three,
+// so the widget can also show one category, or a single merged shortlist.
+const WIDGET_MODES = [
+  ['categories', 'A section per category'],
+  ['single', 'One category only'],
+  ['top', 'Top tasks across categories']
+];
+const WIDGET_TOP_MIN = 1;
+const WIDGET_TOP_MAX = 12;
+
 function weekKeyFromKey(key) {
   const [y, m, d] = key.split('-').map(Number);
   return weekKey(new Date(y, m - 1, d));
@@ -153,7 +164,8 @@ function defaultState() {
     dayOrders: {},      // { 'YYYY-MM-DD': { taskId: index } } — per-day manual order
     settings: {
       showImport: true, showWeightNotes: true,
-      dateFormat: DEFAULT_DATE_FORMAT, dueDisplay: 'both'
+      dateFormat: DEFAULT_DATE_FORMAT, dueDisplay: 'both',
+      widgetMode: 'categories', widgetCategory: 'daily', widgetTop: 5
     },
     taskmasterView: 'categories',   // 'categories' (per-category boxes) | 'grouped' (one due-today box)
     lastDay: todayKey(),
@@ -193,6 +205,11 @@ function migrate(s) {
   if (typeof s.settings.showWeightNotes !== 'boolean') s.settings.showWeightNotes = true;
   if (!DATE_FORMATS.some((f) => f.id === s.settings.dateFormat)) s.settings.dateFormat = DEFAULT_DATE_FORMAT;
   if (!DUE_DISPLAYS.some(([id]) => id === s.settings.dueDisplay)) s.settings.dueDisplay = 'both';
+  // existing saves keep the stacked layout they already have
+  if (!WIDGET_MODES.some(([id]) => id === s.settings.widgetMode)) s.settings.widgetMode = 'categories';
+  if (typeof s.settings.widgetCategory !== 'string') s.settings.widgetCategory = 'daily';
+  s.settings.widgetTop = Math.max(WIDGET_TOP_MIN,
+    Math.min(WIDGET_TOP_MAX, Math.round(Number(s.settings.widgetTop)) || 5));
   if (s.taskmasterView !== 'grouped') s.taskmasterView = 'categories';
 
   // --- fold the old v1 arrays into the unified task list (once) ---

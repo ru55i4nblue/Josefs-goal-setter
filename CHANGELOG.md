@@ -7,7 +7,29 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- **The sticky widget can condense itself.** A stack of category boxes gets
+  unwieldy past two or three, so **Settings → Widget** now offers three layouts:
+  a section per category (the existing behaviour, still the default), a single
+  category, or one merged shortlist of the top tasks across the ticked
+  categories.
+- The shortlist is ranked the way the app thinks — unfinished first, then
+  overdue, then due today, then heaviest. Routine carries no weight by design,
+  so it settles at the bottom of its group rather than crowding out real work.
+  Length is adjustable from 1 to 12.
+- Every row in the merged list is **colour-coded by category** with a solid dot,
+  and names its category on hover — two categories can share a palette colour.
+  The checkbox only shows its colour once ticked, so an unticked row needed a
+  marker of its own.
+
+### Fixed
+
+- **Category dots are visible in light mode.** The vivid palette all but vanished
+  on white — the neon dot measured 1.33:1, far under the 3:1 minimum for a
+  non-text indicator, with amber, teal and grey also failing. Light mode now uses
+  darkened variants (all eight now clear 3.5:1) while dark mode keeps the vivid
+  ones. This also fixes the section-header dots, which shared the same colours.
 
 ## [2.3.0] — 2026-07-31
 

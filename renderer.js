@@ -493,26 +493,77 @@ function celebrate() {
 /* ============================================================
    Widget
    ============================================================ */
+function widgetTask(t, cat, dateKey) {
+  return {
+    id: t.id, kind: cat.id, title: t.title, done: t.done,
+    color: cat.color, cat: cat.name,              // so a merged list still shows origin
+    weight: catHasWeight(cat.id) ? t.weight : null,
+    due: relativeDueShort(dueDateOf(t)),          // widget is tiny — compact form
+    overdue: dueDateOf(t) < dateKey
+  };
+}
+
+function widgetSection(cat, dateKey) {
+  // same ordering the app shows, so the widget never disagrees with the list
+  const tasks = catOrderedTasks(cat, dateKey).all.slice(0, Math.max(1, cat.limit || 2));
+  const sec = {
+    key: cat.id, label: cat.name, color: cat.color,
+    tasks: tasks.map((t) => widgetTask(t, cat, dateKey))
+  };
+  if (cat.type === 'weekly') sec.pct = Math.round(weeklyProgress().pct);
+  if (cat.type === 'daily') sec.pct = Math.round(dailyProgress().pct);
+  return sec;
+}
+
+// One merged shortlist instead of a stack of boxes. Ranked the way the app
+// thinks: unfinished first, then overdue, then due today, then heaviest — weight
+// is the whole premise, so a 5 outranks three 1s. Routine carries no weight and
+// sinks accordingly, which is the point of it being weightless.
+function widgetTopSection(cats, dateKey) {
+  const n = Math.max(WIDGET_TOP_MIN,
+    Math.min(WIDGET_TOP_MAX, Math.round(Number(state.settings.widgetTop)) || 5));
+  const pool = [];
+  cats.forEach((c) => catOrderedTasks(c, dateKey).all.forEach((t) => pool.push({ t, c })));
+
+  const bucket = ({ t }) => {
+    const d = dueDateOf(t);
+    return d < dateKey ? 0 : d === dateKey ? 1 : 2;
+  };
+  const weightOf = ({ t, c }) => (catHasWeight(c.id) ? t.weight : 0);
+
+  pool.sort((a, b) =>
+    (a.t.done ? 1 : 0) - (b.t.done ? 1 : 0)
+    || bucket(a) - bucket(b)
+    || weightOf(b) - weightOf(a)
+    || dueDateOf(a.t).localeCompare(dueDateOf(b.t))
+    || a.t.title.localeCompare(b.t.title));
+
+  const shown = pool.slice(0, n);
+  return {
+    key: '__top', label: 'Top tasks', color: 'purple', dot: false,
+    showTaskCats: true,     // no section header here, so each row names its own category
+    // a percentage would be lying here — these span categories, so show the cut instead
+    note: pool.length > shown.length ? `${shown.length} of ${pool.length}` : `${pool.length}`,
+    tasks: shown.map(({ t, c }) => widgetTask(t, c, dateKey))
+  };
+}
+
 function pushWidget() {
   if (!window.goalAPI || !window.goalAPI.pushWidget) return;
   const dateKey = todayKey();
-  const sections = state.categories.filter((c) => c.widget).map((c) => {
-    // same ordering the app shows, so the widget never disagrees with the list
-    const tasks = catOrderedTasks(c, dateKey).all.slice(0, Math.max(1, c.limit || 2));
-    const sec = {
-      key: c.id, label: c.name, color: c.color,
-      tasks: tasks.map((t) => ({
-        id: t.id, kind: c.id, title: t.title, done: t.done,
-        weight: catHasWeight(c.id) ? t.weight : null,
-        due: relativeDueShort(dueDateOf(t)),        // widget is tiny — compact form
+  const mode = (state.settings && state.settings.widgetMode) || 'categories';
+  const chosen = state.categories.filter((c) => c.widget);
 
-        overdue: dueDateOf(t) < dateKey
-      }))
-    };
-    if (c.type === 'weekly') sec.pct = Math.round(weeklyProgress().pct);
-    if (c.type === 'daily') sec.pct = Math.round(dailyProgress().pct);
-    return sec;
-  });
+  let sections;
+  if (mode === 'single') {
+    // the chosen category may since have been deleted — fall back rather than blank out
+    const cat = getCat(state.settings.widgetCategory) || chosen[0] || state.categories[0];
+    sections = cat ? [widgetSection(cat, dateKey)] : [];
+  } else if (mode === 'top') {
+    sections = [widgetTopSection(chosen, dateKey)];
+  } else {
+    sections = chosen.map((c) => widgetSection(c, dateKey));
+  }
   window.goalAPI.pushWidget({ theme: state.theme, sections });
 }
 

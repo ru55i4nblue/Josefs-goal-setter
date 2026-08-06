@@ -7,6 +7,10 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [2.4.0] — 2026-08-07
+
 ### Added
 
 - **The sticky widget can condense itself.** A stack of category boxes gets
@@ -222,7 +226,8 @@ First public release. Windows installer and macOS disk images published from CI.
 - Recurring tasks showing as already completed when viewing a future day.
 - macOS CI builds failing while attempting to publish a release.
 
-[Unreleased]: https://github.com/ru55i4nblue/Josefs-goal-setter/compare/v2.3.0...HEAD
+[Unreleased]: https://github.com/ru55i4nblue/Josefs-goal-setter/compare/v2.4.0...HEAD
+[2.4.0]: https://github.com/ru55i4nblue/Josefs-goal-setter/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/ru55i4nblue/Josefs-goal-setter/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/ru55i4nblue/Josefs-goal-setter/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/ru55i4nblue/Josefs-goal-setter/compare/v2.0.0...v2.1.0

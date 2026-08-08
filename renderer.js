@@ -50,14 +50,17 @@ function rolloverIfNeeded() {
     // reset recurring daily/routine tasks; drop past-dated one-offs in dated categories
     state.tasks.forEach((t) => {
       const type = catType(t.categoryId);
-      if (t.recurring && t.cadence === 'daily' && (type === 'daily' || type === 'routine')) {
+      // Routine is a standing list, so it resets every day whether or not it was
+      // ever flagged recurring.
+      if (type === 'routine' || (t.recurring && t.cadence === 'daily' && type === 'daily')) {
         t.done = false; t.completedAt = null;
       }
     });
     state.tasks = state.tasks.filter((t) => {
       const type = catType(t.categoryId);
       if (type !== 'daily' && type !== 'routine') return true;
-      if (t.recurring) return true;
+      if (type === 'routine' || t.recurring) return true;
+      if (!t.deliverBy) return true;                  // undated is a someday pile, never swept
       return t.deliverBy >= tk;                       // keep today + future
     });
     rollDayOrders(state.lastDay, tk);
@@ -76,6 +79,7 @@ function rolloverIfNeeded() {
     });
     state.tasks = state.tasks.filter((t) => {
       if (catType(t.categoryId) !== 'weekly' || t.recurring) return true;
+      if (!t.deliverBy) return true;                  // undated is a someday pile, never swept
       return weekKeyFromKey(t.deliverBy) >= wk;       // keep this week + future
     });
     state.lastWeek = wk;
@@ -156,7 +160,8 @@ function addTask(opts) {
     recurring,
     cadence: recurring ? (opts.cadence || (cat.type === 'weekly' ? 'weekly' : 'daily')) : null,
     days: recurring ? (opts.days || []) : [],
-    deliverBy: opts.deliverBy || todayKey(),
+    // optional, and never set for routine — a chore recurs, it isn't due
+    deliverBy: cat.type === 'routine' ? null : (opts.deliverBy || null),
     done: false,
     completedAt: null,
     order: Date.now(),
@@ -177,7 +182,8 @@ function updateTask(id, patch) {
     title,
     weight: Math.max(1, Math.min(5, Number(patch.weight) || 1)),
     note: patch.note || '',
-    deliverBy: patch.deliverBy || t.deliverBy,
+    // '' clears the date deliberately, so don't fall back to the old value
+    deliverBy: wasRoutine ? null : (patch.deliverBy || null),
     recurring: !!patch.recurring
   });
   // routine membership is fixed — tasks can't be moved in or out of it
@@ -223,8 +229,10 @@ function renderTaskArea() {
 function catBoxTasks(cat) {
   const tk = todayKey();
   return tasksOf(cat.id).filter((t) => {
+    if (cat.type === 'routine') return true;             // standing list, always shown
     if (t.recurring) return activeOn(t, tk) || dueDateOf(t) > tk;
-    if (t.done) return t.deliverBy === tk;
+    // an undated task stays put once ticked, so it can still be un-ticked
+    if (t.done) return !t.deliverBy || t.deliverBy === tk;
     return true;
   });
 }
@@ -234,10 +242,14 @@ function catBoxTasks(cat) {
 // by deliver-by date.
 function catOrderedTasks(cat, dateKey = todayKey()) {
   const pool = catBoxTasks(cat);
-  const dueToday = sortInCat(pool.filter((t) => dueDateOf(t) <= dateKey), cat, dateKey);
-  const later = pool.filter((t) => dueDateOf(t) > dateKey)
-    .sort((a, b) => dueDateOf(a).localeCompare(dueDateOf(b)) || orderOf(a, dateKey) - orderOf(b, dateKey));
-  return { dueToday, later, all: dueToday.concat(later) };
+  // Undated tasks are neither due nor upcoming — they trail the list in the
+  // category's own manual order, so a someday pile can't jump the queue.
+  const dated = pool.filter(hasDate);
+  const undated = sortInCat(pool.filter((t) => !hasDate(t)), cat, dateKey);
+  const dueToday = sortInCat(dated.filter((t) => dueDateOf(t) <= dateKey), cat, dateKey);
+  const later = dated.filter((t) => dueDateOf(t) > dateKey)
+    .sort((a, b) => compareDue(a, b) || orderOf(a, dateKey) - orderOf(b, dateKey));
+  return { dueToday, later, undated, all: dueToday.concat(later, undated) };
 }
 
 function categoryBox(cat) {
@@ -245,7 +257,7 @@ function categoryBox(cat) {
   const box = el('div', 'list-section cat-box');
   box.dataset.cat = cat.id;
 
-  const { dueToday, later, all } = catOrderedTasks(cat, dateKey);
+  const { dueToday, later, undated, all } = catOrderedTasks(cat, dateKey);
   const limit = cat.expanded ? all.length : Math.max(1, cat.limit || 3);
 
   /* ---- header ---- */
@@ -307,8 +319,23 @@ function categoryBox(cat) {
     if (later.length && budget > 0) {
       const ul = el('div', 'task-list upcoming-list');
       later.slice(0, budget).forEach((t) => ul.appendChild(taskRow(t, ul, dateKey, cat)));
+      budget -= Math.min(budget, later.length);
       makeSortable(ul, cat, dateKey);
       box.appendChild(ul);
+    }
+    // Undated work still has to appear somewhere. Routine is entirely undated, so
+    // it needs no heading — the box is the list. A mixed category gets a label so
+    // the someday pile reads as distinct from the scheduled work above it.
+    if (undated.length && budget > 0) {
+      if (dueToday.length || later.length) {
+        const sub = el('div', 'task-subgroup');
+        sub.textContent = NO_DATE_LABEL;
+        box.appendChild(sub);
+      }
+      const nl = el('div', 'task-list undated-list');
+      undated.slice(0, budget).forEach((t) => nl.appendChild(taskRow(t, nl, dateKey, cat)));
+      makeSortable(nl, cat, dateKey);
+      box.appendChild(nl);
     }
   }
 
@@ -328,7 +355,10 @@ function categoryBox(cat) {
       if (e.key !== 'Enter') return;
       const parsed = parseTaskLine(e.target.value);
       if (!parsed) return;
-      addTask({ title: parsed.title, weight: parsed.weight, categoryId: cat.id, deliverBy: todayKey() });
+      // dated categories are about today's list; a persistent one shouldn't get
+      // a deadline just because it was typed quickly
+      addTask({ title: parsed.title, weight: parsed.weight, categoryId: cat.id,
+        deliverBy: cat.type === 'daily' || cat.type === 'weekly' ? todayKey() : null });
       e.target.value = '';
     });
     box.appendChild(qa);
@@ -367,13 +397,18 @@ function taskRow(t, container, dateKey, cat) {
     r.textContent = recurLabel(t); r.title = 'Recurring';
     row.appendChild(r);
   }
-  // deliver-by sits next to the weight; today/overdue are called out
+  // deliver-by sits next to the weight; today/overdue are called out. Routine
+  // never carries a date, so it gets no badge at all rather than an empty one.
   const due = dueDateOf(t);
   const tk = todayKey();
-  const dueBadge = el('span', 'due-badge' + (due < tk ? ' overdue' : due === tk ? ' today' : ''));
-  dueBadge.textContent = dueLabel(due);           // format + days remaining, per Settings
-  dueBadge.title = `Deliver by ${prettyDate(due)} · ${relativeDue(due)}`;
-  row.appendChild(dueBadge);
+  if (cat.type !== 'routine') {
+    const dueBadge = el('span', 'due-badge'
+      + (!due ? ' undated' : due < tk ? ' overdue' : due === tk ? ' today' : ''));
+    dueBadge.textContent = dueLabel(due);         // format + days remaining, per Settings
+    dueBadge.title = due ? `Deliver by ${prettyDate(due)} · ${relativeDue(due)}`
+      : 'No deliver-by date — not counted by any progress bar';
+    row.appendChild(dueBadge);
+  }
 
   // Routine is weightless by design — no score, no badge.
   if (catHasWeight(cat.id)) {
@@ -498,8 +533,8 @@ function widgetTask(t, cat, dateKey) {
     id: t.id, kind: cat.id, title: t.title, done: t.done,
     color: cat.color, cat: cat.name,              // so a merged list still shows origin
     weight: catHasWeight(cat.id) ? t.weight : null,
-    due: relativeDueShort(dueDateOf(t)),          // widget is tiny — compact form
-    overdue: dueDateOf(t) < dateKey
+    due: relativeDueShort(dueDateOf(t)),          // widget is tiny — compact form ('' when undated)
+    overdue: hasDate(t) && dueDateOf(t) < dateKey
   };
 }
 
@@ -525,8 +560,10 @@ function widgetTopSection(cats, dateKey) {
   const pool = [];
   cats.forEach((c) => catOrderedTasks(c, dateKey).all.forEach((t) => pool.push({ t, c })));
 
+  // undated work ranks last — it's a someday pile, not something due
   const bucket = ({ t }) => {
     const d = dueDateOf(t);
+    if (!d) return 3;
     return d < dateKey ? 0 : d === dateKey ? 1 : 2;
   };
   const weightOf = ({ t, c }) => (catHasWeight(c.id) ? t.weight : 0);
@@ -535,7 +572,7 @@ function widgetTopSection(cats, dateKey) {
     (a.t.done ? 1 : 0) - (b.t.done ? 1 : 0)
     || bucket(a) - bucket(b)
     || weightOf(b) - weightOf(a)
-    || dueDateOf(a.t).localeCompare(dueDateOf(b.t))
+    || compareDue(a.t, b.t)
     || a.t.title.localeCompare(b.t.title));
 
   const shown = pool.slice(0, n);
@@ -601,21 +638,25 @@ function syncModalFields() {
     ? (cat.type === 'custom' ? $('#taskCadence').value : (isWeeklyCat ? 'weekly' : 'daily'))
     : null;
   $('#dayPickWrap').classList.toggle('hidden', !(recurring && cadence === 'daily'));
-  $('#dateRow').classList.toggle('hidden', cat.type === 'custom' && recurring);
+  // Routine never carries a date, so the field is meaningless there.
+  $('#dateRow').classList.toggle('hidden',
+    cat.type === 'routine' || (cat.type === 'custom' && recurring));
   $('#dateLabel').textContent = isWeeklyCat ? 'Deliver by (any date in the target week)' : 'Deliver by';
+  $('#clearDateBtn').classList.toggle('hidden', !$('#taskDate').value);
 }
 
 function openModal(opts = {}) {
   modalEditId = null;
   modalWeight = 1;
   modalDays = new Set();
-  modalCatId = opts.categoryId || 'daily';
+  modalCatId = opts.categoryId || defaultCatId();
   $('#modalTitle').textContent = 'New task';
   $('#modalSave').textContent = 'Add task';
   $('#modalDelete').classList.add('hidden');
   $('#taskTitle').value = '';
   $('#taskNote').value = '';
-  $('#taskDate').value = opts.deliverBy || todayKey();
+  // blank unless the caller supplied one — a date is now opt-in
+  $('#taskDate').value = opts.deliverBy || '';
   $('#recurringChk').checked = false;
   $('#taskCadence').value = 'daily';
   $('#modalDateNote').classList.add('hidden');
@@ -639,7 +680,7 @@ function openEditModal(id) {
   $('#modalDelete').classList.remove('hidden');
   $('#taskTitle').value = t.title;
   $('#taskNote').value = t.note || '';
-  $('#taskDate').value = t.deliverBy || todayKey();
+  $('#taskDate').value = t.deliverBy || '';
   $('#recurringChk').checked = !!t.recurring;
   $('#taskCadence').value = t.cadence || 'daily';
   $('#modalDateNote').classList.add('hidden');
@@ -655,7 +696,7 @@ function openEditModal(id) {
 function closeModal() { $('#modal').classList.add('hidden'); }
 
 function saveModal() {
-  const cat = getCat(modalCatId) || getCat('daily');
+  const cat = getCat(modalCatId) || getCat(defaultCatId());
   const recurring = $('#recurringChk').checked;
   const cadence = recurring
     ? (cat.type === 'custom' ? $('#taskCadence').value : (cat.type === 'weekly' ? 'weekly' : 'daily'))
@@ -668,7 +709,7 @@ function saveModal() {
     recurring,
     cadence,
     days: cadence === 'daily' ? [...modalDays].sort() : [],
-    deliverBy: $('#taskDate').value || todayKey()
+    deliverBy: $('#taskDate').value || null      // blank means genuinely undated
   };
   if (modalEditId) updateTask(modalEditId, payload);
   else addTask(payload);

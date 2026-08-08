@@ -18,8 +18,12 @@ function renderGroupedView(body) {
     return;
   }
 
-  const dueToday = rows.filter((r) => r.due <= tk).sort((a, b) => b.t.weight - a.t.weight);
-  const later = rows.filter((r) => r.due > tk).sort((a, b) => a.due.localeCompare(b.due) || b.t.weight - a.t.weight);
+  const dueToday = rows.filter((r) => r.due && r.due <= tk).sort((a, b) => b.t.weight - a.t.weight);
+  const later = rows.filter((r) => r.due && r.due > tk)
+    .sort((a, b) => a.due.localeCompare(b.due) || b.t.weight - a.t.weight);
+  // This view groups by deliver-by date, so undated work gets its own section
+  // at the bottom rather than being silently dropped.
+  const undated = rows.filter((r) => !r.due).sort((a, b) => b.t.weight - a.t.weight);
 
   if (dueToday.length) {
     body.appendChild(tmSection('Due today', dueToday, true));
@@ -35,6 +39,7 @@ function renderGroupedView(body) {
     const label = `${prettyDate(date)} · in ${days} day${days === 1 ? '' : 's'}`;
     body.appendChild(tmSection(label, groups.get(date), false));
   });
+  if (undated.length) body.appendChild(tmSection(NO_DATE_LABEL, undated, false));
 }
 
 function tmSection(label, rows, urgent) {
@@ -57,7 +62,7 @@ function tmSection(label, rows, urgent) {
     const meta = el('div', 'tm-meta');
     meta.innerHTML = `<span class="tm-cat ${cat.color}">${escapeHtml(cat.name)}</span>`
       + (t.recurring ? `<span class="recur-badge">${escapeHtml(recurLabel(t))}</span>` : '')
-      + `<span class="tm-due${due < todayKey() ? ' overdue' : due === todayKey() ? ' today' : ''}">${escapeHtml(dueLabel(due))}</span>`;
+      + `<span class="tm-due${!due ? ' undated' : due < todayKey() ? ' overdue' : due === todayKey() ? ' today' : ''}">${escapeHtml(dueLabel(due))}</span>`;
     main.appendChild(meta);
     if (t.note && state.settings.showWeightNotes) {
       const note = el('div', 'task-note');
@@ -128,8 +133,7 @@ function renderCatManager() {
 
     const name = el('input', 'rec-title');
     name.value = cat.name;
-    name.disabled = !!cat.builtin;
-    name.title = cat.builtin ? 'Built-in category — name is fixed' : 'Rename';
+    name.title = 'Rename';                        // every category is renameable now
     name.onchange = () => {
       const v = name.value.trim();
       if (v) { cat.name = v; save(); render(); renderCatManager(); } else name.value = cat.name;
@@ -137,7 +141,7 @@ function renderCatManager() {
     row.appendChild(name);
 
     const type = el('span', 'cat-type');
-    type.textContent = cat.builtin ? cat.type : 'persistent';
+    type.textContent = cat.type === 'custom' ? 'persistent' : cat.type;
     row.appendChild(type);
 
     const widget = el('button', 'rec-routine' + (cat.widget ? ' active' : ''));
@@ -162,19 +166,37 @@ function renderCatManager() {
     limitWrap.appendChild(limit);
     row.appendChild(limitWrap);
 
-    if (!cat.builtin) {
-      const del = el('button', 'rec-del');
-      del.textContent = '✕';
-      del.title = 'Delete category (its tasks move to Daily)';
-      del.onclick = () => {
-        const moved = tasksOf(cat.id).length;
-        state.tasks.forEach((t) => { if (t.categoryId === cat.id) t.categoryId = 'daily'; });
-        state.categories = state.categories.filter((c) => c.id !== cat.id);
-        save(); render(); renderCatManager();
-        toast(`Deleted “${cat.name}”${moved ? ` · ${moved} task${moved === 1 ? '' : 's'} moved to Daily` : ''}`);
-      };
-      row.appendChild(del);
-    }
+    // Every category is deletable now that progress is driven by dates rather
+    // than category type — except the last one, which would leave tasks homeless.
+    const isLast = state.categories.length <= 1;
+    // Never rehome into Routine if we can avoid it: it's a dateless standing list,
+    // so dated tasks moved there would quietly lose their deliver-by dates.
+    const others = state.categories.filter((c) => c.id !== cat.id);
+    const heir = others.find((c) => c.type !== 'routine') || others[0];
+    const del = el('button', 'rec-del');
+    del.textContent = '✕';
+    del.disabled = isLast;
+    del.title = isLast
+      ? "Can't delete the only category"
+      : `Delete category (its tasks move to ${heir.name})`;
+    del.onclick = () => {
+      if (isLast) return;
+      const moving = tasksOf(cat.id);
+      const backup = { cat: { ...cat }, ids: moving.map((t) => t.id), at: state.categories.indexOf(cat) };
+      moving.forEach((t) => { t.categoryId = heir.id; });
+      state.categories = state.categories.filter((c) => c.id !== cat.id);
+      save(); render(); renderCatManager(); pushWidget();
+      toast(
+        `Deleted “${cat.name}”${moving.length ? ` · ${moving.length} task${moving.length === 1 ? '' : 's'} moved to ${heir.name}` : ''}`,
+        'Undo',
+        () => {
+          state.categories.splice(backup.at, 0, backup.cat);
+          backup.ids.forEach((id) => { const t = findTask(id); if (t) t.categoryId = backup.cat.id; });
+          save(); render(); renderCatManager(); pushWidget();
+        }
+      );
+    };
+    row.appendChild(del);
     host.appendChild(row);
   });
 }
@@ -341,8 +363,10 @@ function renderArchive() {
         readd.textContent = '↩ Restore';
         readd.title = 'Re-add to today';
         readd.onclick = () => {
+          // the original category may since have been deleted — fall back
+          const want = archiveTab === 'daily' ? 'daily' : 'weekly';
           addTask({ title: t.title, weight: t.weight, note: t.note || '',
-            categoryId: archiveTab === 'daily' ? 'daily' : 'weekly', deliverBy: todayKey() });
+            categoryId: getCat(want) ? want : defaultCatId(), deliverBy: todayKey() });
           toast(`Re-added “${t.title}”`);
         };
         row.appendChild(readd);
@@ -673,7 +697,8 @@ function buildIcs() {
   const stamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
   const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Goal Setter//EN', 'CALSCALE:GREGORIAN'];
   let count = 0;
-  state.tasks.filter((t) => t.weight >= 2).forEach((t) => {
+  // An undated task has no day to sit on in a calendar, so it can't be exported.
+  state.tasks.filter((t) => t.weight >= 2 && hasDate(t)).forEach((t) => {
     count++;
     const start = dueDateOf(t).replace(/-/g, '');
     const end = addDays(dueDateOf(t), 1).replace(/-/g, '');
@@ -718,9 +743,15 @@ function refreshFullUI() {
 // our (newer) state back instead of adopting them.
 function isStaleSchema(remote) {
   if (!remote) return true;
-  if (remote.version >= 2) return false;
-  const hasV2 = Array.isArray(remote.tasks) && remote.tasks.length;
+  if (remote.version >= 3) return false;
   const localHasTasks = Array.isArray(state.tasks) && state.tasks.length;
+  // A v2 client has no concept of an undated task: its migrate() stamps today's
+  // date onto anything without one, which would re-date the whole someday pile
+  // and hand every routine chore a meaningless deadline. Refuse it — but only
+  // when we hold local data worth protecting, so a fresh install still adopts
+  // (and thereby upgrades) whatever is already in the cloud.
+  if (remote.version === 2) return !!localHasTasks;
+  const hasV2 = Array.isArray(remote.tasks) && remote.tasks.length;
   return !hasV2 && localHasTasks;
 }
 
@@ -839,6 +870,8 @@ function wire() {
   $('#taskCategory').onchange = (e) => { modalCatId = e.target.value; syncModalFields(); };
   $('#recurringChk').addEventListener('change', syncModalFields);
   $('#taskCadence').addEventListener('change', syncModalFields);
+  $('#taskDate').addEventListener('input', syncModalFields);   // show/hide Clear
+  $('#clearDateBtn').onclick = () => { $('#taskDate').value = ''; syncModalFields(); };
   $('#modalCancel').onclick = closeModal;
   $('#modalDelete').onclick = () => { if (modalEditId) deleteTask(modalEditId); closeModal(); };
   $('#modalSave').onclick = saveModal;
@@ -879,7 +912,7 @@ function wire() {
       recurring: rec,
       cadence: rec ? $('#cCadence').value : null,
       days: rec && $('#cCadence').value === 'daily' ? [...cDays].sort() : [],
-      deliverBy: $('#cDeliverBy').value || todayKey()
+      deliverBy: $('#cDeliverBy').value || null    // blank means genuinely undated
     });
     if (!t) { toast('Give the task a name first'); return; }
     $('#cTitle').value = ''; $('#cNote').value = '';
@@ -921,7 +954,7 @@ function wire() {
   $('#dayModalClose').onclick = () => $('#dayModal').classList.add('hidden');
   $('#dayModalAdd').onclick = () => {
     $('#dayModal').classList.add('hidden');
-    openModal({ categoryId: 'daily', deliverBy: dayModalKey });
+    openModal({ categoryId: defaultCatId(), deliverBy: dayModalKey });
   };
 
   /* ---- settings ---- */

@@ -295,8 +295,12 @@
         placeholder="Context for the weighting — why it needs doing, and what happens if it isn't."></textarea>
 
       <div id="dateRow" class="date-row">
-        <label id="dateLabel" class="field-label">Deliver by</label>
-        <input id="taskDate" class="text-input" type="date" />
+        <label id="dateLabel" class="field-label">Deliver by <span class="field-optional">optional</span></label>
+        <div class="date-field">
+          <input id="taskDate" class="text-input" type="date" />
+          <button id="clearDateBtn" type="button" class="btn-ghost btn-small hidden"
+                  title="Remove the deliver-by date — the task becomes a someday item">Clear</button>
+        </div>
       </div>
 
       <label class="check-row">

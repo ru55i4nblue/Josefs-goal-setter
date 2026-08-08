@@ -2,11 +2,16 @@
    Goal Setter — data model
    ------------------------------------------------------------
    One flat `tasks` array + a `categories` list. Every task carries a
-   categoryId, a deliverBy date and a weight (1-5) with an optional note.
+   categoryId, a weight (1-5), an optional note and an OPTIONAL deliverBy date.
+   Undated tasks are a someday pile: visible in their category, never overdue,
+   and excluded from every date-scoped progress bar.
+
+   Categories are grouping only — progress is driven by dates, not by category
+   type — so every category can be renamed and deleted, including the starters.
    Category types:
      weekly  — lives in the week of its deliverBy date
      daily   — appears on its deliverBy date (or per weekday if recurring)
-     routine — like daily but lowest priority; tasks can't move in/out
+     routine — a standing list; carries NO date and can't move in/out
      custom  — persists until completed or deleted, then goes to its archive
    ============================================================ */
 
@@ -69,8 +74,10 @@ function dateFormat() {
   const id = (typeof state !== 'undefined' && state.settings && state.settings.dateFormat) || DEFAULT_DATE_FORMAT;
   return DATE_FORMATS.find((f) => f.id === id) || DATE_FORMATS[0];
 }
-const prettyDate = (key) => dateFormat().full(dateParts(key));
-const shortDate = (key) => dateFormat().short(dateParts(key));
+// A task can carry no deliver-by date at all; every formatter has to survive it.
+const NO_DATE_LABEL = 'No date';
+const prettyDate = (key) => (key ? dateFormat().full(dateParts(key)) : NO_DATE_LABEL);
+const shortDate = (key) => (key ? dateFormat().short(dateParts(key)) : NO_DATE_LABEL);
 // sample renderings for the settings picker
 const formatSample = (id) => {
   const f = DATE_FORMATS.find((x) => x.id === id) || DATE_FORMATS[0];
@@ -81,12 +88,14 @@ const formatSample = (id) => {
 // Compared at local midnight so a task due "today" reads as 0 regardless of clock
 // time, and DST shifts can't push a count off by one.
 function daysUntil(key) {
+  if (!key) return null;
   const [y, m, d] = key.split('-').map(Number);
   const [ty, tm, td] = todayKey().split('-').map(Number);
   return Math.round((new Date(y, m - 1, d) - new Date(ty, tm - 1, td)) / 864e5);
 }
 function relativeDue(key) {
   const n = daysUntil(key);
+  if (n === null) return NO_DATE_LABEL;
   if (n === 0) return 'today';
   if (n === 1) return 'tomorrow';
   if (n === -1) return 'yesterday · overdue';
@@ -96,6 +105,7 @@ function relativeDue(key) {
 // Compact form for the sticky widget, which has very little room.
 function relativeDueShort(key) {
   const n = daysUntil(key);
+  if (n === null) return '';                    // widget has no room for "no date"
   if (n === 0) return 'today';
   return n < 0 ? `${-n}d over` : `${n}d`;
 }
@@ -106,6 +116,7 @@ const DUE_DISPLAYS = [
   ['days', 'Days remaining only']
 ];
 function dueLabel(key) {
+  if (!key) return NO_DATE_LABEL;               // both halves would read the same
   const mode = (state.settings && state.settings.dueDisplay) || 'both';
   if (mode === 'date') return prettyDate(key);
   if (mode === 'days') return relativeDue(key);
@@ -154,7 +165,7 @@ const BUILTIN_CATEGORIES = [
 
 function defaultState() {
   return {
-    version: 2,
+    version: 3,
     categories: BUILTIN_CATEGORIES.map((c) => ({ ...c })),
     tasks: [],
     archive: [],        // completed tasks from custom categories
@@ -179,12 +190,14 @@ function defaultState() {
 
 /* ---------- migration from the v1 shape ---------- */
 function migrate(s) {
+  // Categories are now just grouping — progress is driven by dates, so none of
+  // them is load-bearing and any can be deleted. We only seed the starter set
+  // when there are no categories at all; we no longer resurrect them, which is
+  // what used to make Daily and Weekly undeletable.
   if (!Array.isArray(s.categories) || !s.categories.length) s.categories = BUILTIN_CATEGORIES.map((c) => ({ ...c }));
-  // make sure the three built-ins always exist and keep their type
   BUILTIN_CATEGORIES.forEach((b) => {
     const found = s.categories.find((c) => c.id === b.id);
-    if (!found) s.categories.push({ ...b });
-    else Object.assign(found, { builtin: true, type: b.type, color: found.color || b.color });
+    if (found) Object.assign(found, { type: found.type || b.type, color: found.color || b.color });
   });
   s.categories.forEach((c) => {
     if (typeof c.widget !== 'boolean') c.widget = true;
@@ -255,33 +268,52 @@ function migrate(s) {
   delete s.dailySplit;
 
   // normalise every task
+  const fallbackCat = s.categories[0] ? s.categories[0].id : 'daily';
+  const typeOfCat = (id) => { const c = s.categories.find((x) => x.id === id); return c ? c.type : 'custom'; };
   s.tasks.forEach((t, i) => {
     t.weight = Math.max(1, Math.min(5, Number(t.weight) || 1));
     if (typeof t.note !== 'string') t.note = '';
-    if (!t.categoryId || !s.categories.some((c) => c.id === t.categoryId)) t.categoryId = 'daily';
+    // the task's category may since have been deleted — rehome rather than orphan
+    if (!t.categoryId || !s.categories.some((c) => c.id === t.categoryId)) t.categoryId = fallbackCat;
     if (!Array.isArray(t.days)) t.days = [];
-    if (!t.deliverBy) t.deliverBy = today;
-    if (t.recurring && !t.cadence) t.cadence = t.categoryId === 'weekly' ? 'weekly' : 'daily';
+    // A deliver-by date is optional now; only routine is forced to have none,
+    // since a chore recurs rather than falling due on a particular day.
+    if (typeOfCat(t.categoryId) === 'routine') t.deliverBy = null;
+    else if (!t.deliverBy) t.deliverBy = null;
+    if (t.recurring && !t.cadence) t.cadence = typeOfCat(t.categoryId) === 'weekly' ? 'weekly' : 'daily';
     if (typeof t.order !== 'number') t.order = i;
   });
   s.archive.forEach((t) => { t.weight = Math.max(1, Math.min(5, Number(t.weight) || 1)); });
-  s.version = 2;
+  s.version = 3;
   return s;
 }
 
 /* ---------- category + task queries ---------- */
 function getCat(id) { return state.categories.find((c) => c.id === id); }
 function catType(id) { const c = getCat(id); return c ? c.type : 'custom'; }
+// Any category can be deleted now, so nothing may assume 'daily' exists. Prefer a
+// dated, weighted category to land new work in; fall back to whatever is left.
+function defaultCatId() {
+  const pick = state.categories.find((c) => c.type === 'daily')
+    || state.categories.find((c) => c.type !== 'routine')
+    || state.categories[0];
+  return pick ? pick.id : null;
+}
 function tasksOf(catId) { return state.tasks.filter((t) => t.categoryId === catId); }
 
 // Is a task active (visible) on a given date?
 function activeOn(t, dateKey) {
   const type = catType(t.categoryId);
+  // Routine is a standing list: it recurs by its nature and carries no date at
+  // all, so it's active every day unless pinned to particular weekdays.
+  if (type === 'routine') return !t.days.length || t.days.includes(weekdayOf(dateKey));
   if (type === 'custom') return true;            // persists until completed/deleted
   if (t.recurring) {
     if (t.cadence === 'weekly') return true;     // present every week
     return !t.days.length || t.days.includes(weekdayOf(dateKey));
   }
+  // Undated work is a someday pile — real, but it doesn't land on any given day.
+  if (!t.deliverBy) return false;
   if (type === 'weekly') return weekKeyFromKey(t.deliverBy) === weekKeyFromKey(dateKey);
   return t.deliverBy === dateKey;
 }
@@ -363,7 +395,7 @@ function weeklyProgress() {
 // For recurring tasks show only the NEXT uncompleted instance date.
 function nextInstance(t) {
   const tk = todayKey();
-  if (!t.recurring) return t.deliverBy;
+  if (!t.recurring) return t.deliverBy || null;
   if (t.cadence === 'weekly') {
     if (!t.done) return t.deliverBy > tk ? t.deliverBy : tk;
     return addDays(tk, 7 - ((weekdayOf(tk) + 6) % 7)); // next Monday
@@ -376,4 +408,20 @@ function nextInstance(t) {
   }
   return tk;
 }
-function dueDateOf(t) { return t.recurring ? nextInstance(t) : t.deliverBy; }
+// null when a task carries no deliver-by date at all. Every caller must cope —
+// use hasDate()/compareDue() rather than comparing the result directly.
+function dueDateOf(t) {
+  // Routine is a standing list — it recurs rather than falling due, so it never
+  // reports a date even though it is technically recurring.
+  if (catType(t.categoryId) === 'routine') return null;
+  return t.recurring ? nextInstance(t) : (t.deliverBy || null);
+}
+const hasDate = (t) => !!dueDateOf(t);
+// Sort helper: dated work first, oldest first; undated sinks to the bottom.
+function compareDue(a, b) {
+  const da = dueDateOf(a), db = dueDateOf(b);
+  if (da && db) return da.localeCompare(db);
+  if (da) return -1;
+  if (db) return 1;
+  return 0;
+}

@@ -603,6 +603,20 @@ body.dark .checkbox.neon.checked::after { color: #08130c; }
   color: var(--danger-text); background: var(--danger-tint);
   border-color: var(--danger-line); font-weight: 700;
 }
+/* A someday item — deliberately quieter than a real date, and dashed so it reads
+   as "not scheduled" rather than as another deadline. */
+.due-badge.undated {
+  background: none; border-style: dashed; border-color: var(--border-strong);
+  color: var(--text-soft); font-weight: 600;
+}
+.tm-due.undated { color: var(--text-soft); font-weight: 600; font-style: italic; }
+
+.field-optional {
+  font-weight: 400; text-transform: none; letter-spacing: 0;
+  color: var(--text-faint); font-size: 11px; margin-left: 4px;
+}
+.date-field { display: flex; align-items: center; gap: 8px; }
+.date-field .text-input { flex: 1; min-width: 0; }
 
 /* ===================== TASKMASTER ===================== */
 .page-taskmaster { padding: 26px 36px; overflow-y: auto; }

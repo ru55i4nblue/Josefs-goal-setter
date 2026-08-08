@@ -7,7 +7,35 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- **Deliver-by dates are optional.** A task saved without one becomes a someday
+  item: visible in its category under a **No date** heading, never overdue, and
+  excluded from progress. The task dialog now opens with the date blank and
+  offers **Clear** to remove one.
+
+### Changed
+
+- **Every category can be renamed and deleted, including Daily and Weekly.**
+  They were previously resurrected on every load. Deleting one moves its tasks to
+  another category — never into Routine, which would strip their dates — with an
+  undo. The last remaining category can't be deleted.
+- **Routine carries no deliver-by date at all.** A chore recurs rather than
+  falling due, so the date field is hidden for Routine and existing routine dates
+  are dropped on upgrade. Routine tasks no longer show a date badge.
+
+### Fixed
+
+- The Taskmaster due-date view no longer silently omits tasks without a date;
+  they group under **No date** at the bottom.
+- Calendar export skips undated tasks rather than failing on them.
+
+### Internal
+
+- Save format is now **v3**. A v2 client is refused as a sync source, exactly as
+  v1 already was: v2 stamps today's date onto anything undated, which would
+  re-date the whole someday pile and give every routine chore a deadline. A fresh
+  install with no local tasks still adopts and upgrades cloud data.
 
 ## [2.4.0] — 2026-08-07
 

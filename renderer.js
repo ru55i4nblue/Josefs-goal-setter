@@ -61,7 +61,11 @@ function rolloverIfNeeded() {
       if (type !== 'daily' && type !== 'routine') return true;
       if (type === 'routine' || t.recurring) return true;
       if (!t.deliverBy) return true;                  // undated is a someday pile, never swept
-      return t.deliverBy >= tk;                       // keep today + future
+      // Unfinished work carries forward and stays overdue rather than being
+      // swept at midnight. Without this an overdue task simply vanished, which
+      // made "is anything overdue?" a question the app could never answer.
+      if (!t.done) return true;
+      return t.deliverBy >= tk;                       // completed one-offs are archived, then cleared
     });
     rollDayOrders(state.lastDay, tk);
     state.lastDay = tk;
@@ -80,7 +84,8 @@ function rolloverIfNeeded() {
     state.tasks = state.tasks.filter((t) => {
       if (catType(t.categoryId) !== 'weekly' || t.recurring) return true;
       if (!t.deliverBy) return true;                  // undated is a someday pile, never swept
-      return weekKeyFromKey(t.deliverBy) >= wk;       // keep this week + future
+      if (!t.done) return true;                       // unfinished work carries forward as overdue
+      return weekKeyFromKey(t.deliverBy) >= wk;       // completed one-offs are archived, then cleared
     });
     state.lastWeek = wk;
   }
@@ -231,8 +236,9 @@ function catBoxTasks(cat) {
   return tasksOf(cat.id).filter((t) => {
     if (cat.type === 'routine') return true;             // standing list, always shown
     if (t.recurring) return activeOn(t, tk) || dueDateOf(t) > tk;
-    // an undated task stays put once ticked, so it can still be un-ticked
-    if (t.done) return !t.deliverBy || t.deliverBy === tk;
+    // A ticked task stays put until rollover clears it — including one that was
+    // overdue when completed, which would otherwise vanish the instant you tick it.
+    if (t.done) return !t.deliverBy || t.deliverBy <= tk;
     return true;
   });
 }
@@ -246,10 +252,14 @@ function catOrderedTasks(cat, dateKey = todayKey()) {
   // category's own manual order, so a someday pile can't jump the queue.
   const dated = pool.filter(hasDate);
   const undated = sortInCat(pool.filter((t) => !hasDate(t)), cat, dateKey);
-  const dueToday = sortInCat(dated.filter((t) => dueDateOf(t) <= dateKey), cat, dateKey);
+  // Overdue is split out from due-today now that unfinished work carries forward
+  // instead of being swept — otherwise a week of misses would quietly pile up
+  // inside a box labelled "Due today".
+  const overdue = sortInCat(dated.filter((t) => dueDateOf(t) < dateKey), cat, dateKey);
+  const dueToday = sortInCat(dated.filter((t) => dueDateOf(t) === dateKey), cat, dateKey);
   const later = dated.filter((t) => dueDateOf(t) > dateKey)
     .sort((a, b) => compareDue(a, b) || orderOf(a, dateKey) - orderOf(b, dateKey));
-  return { dueToday, later, undated, all: dueToday.concat(later, undated) };
+  return { overdue, dueToday, later, undated, all: overdue.concat(dueToday, later, undated) };
 }
 
 function categoryBox(cat) {
@@ -257,7 +267,7 @@ function categoryBox(cat) {
   const box = el('div', 'list-section cat-box');
   box.dataset.cat = cat.id;
 
-  const { dueToday, later, undated, all } = catOrderedTasks(cat, dateKey);
+  const { overdue, dueToday, later, undated, all } = catOrderedTasks(cat, dateKey);
   const limit = cat.expanded ? all.length : Math.max(1, cat.limit || 3);
 
   /* ---- header ---- */
@@ -304,7 +314,21 @@ function categoryBox(cat) {
     hint.textContent = `No ${cat.name.toLowerCase()} tasks — add one with ＋`;
     box.appendChild(hint);
   } else {
-    if (dueToday.length) {
+    // Overdue leads, in its own alarm-coloured callout — carried-forward misses
+    // are the thing you most need to see when you open the app.
+    if (overdue.length && budget > 0) {
+      const od = el('div', 'due-today-box overdue-box');
+      const oh = el('div', 'due-today-head overdue-head');
+      oh.textContent = `Overdue · ${overdue.length}`;
+      od.appendChild(oh);
+      const ol = el('div', 'task-list');
+      overdue.slice(0, budget).forEach((t) => ol.appendChild(taskRow(t, ol, dateKey, cat)));
+      budget -= Math.min(budget, overdue.length);
+      makeSortable(ol, cat, dateKey);
+      od.appendChild(ol);
+      box.appendChild(od);
+    }
+    if (dueToday.length && budget > 0) {
       const due = el('div', 'due-today-box');
       const dh = el('div', 'due-today-head');
       dh.textContent = `Due today · ${dueToday.length}`;

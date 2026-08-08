@@ -584,6 +584,13 @@ body.dark .checkbox.neon.checked::after { color: #08130c; }
   font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em;
   font-weight: 700; color: var(--purple); padding: 2px 4px 5px;
 }
+/* Carried-forward misses, called out in the danger colour rather than the accent
+   so overdue never reads as just another "due soon" group. */
+.overdue-box {
+  border-color: var(--danger-line);
+  background: var(--danger-tint);
+}
+.overdue-head { color: var(--danger-text); }
 .upcoming-list { opacity: .92; }
 
 .due-badge {

@@ -18,13 +18,20 @@ function renderGroupedView(body) {
     return;
   }
 
-  const dueToday = rows.filter((r) => r.due && r.due <= tk).sort((a, b) => b.t.weight - a.t.weight);
+  // Overdue is its own section now that unfinished work carries forward — it
+  // used to be folded into "Due today", which understated how far behind you were.
+  const overdue = rows.filter((r) => r.due && r.due < tk)
+    .sort((a, b) => a.due.localeCompare(b.due) || b.t.weight - a.t.weight);
+  const dueToday = rows.filter((r) => r.due && r.due === tk).sort((a, b) => b.t.weight - a.t.weight);
   const later = rows.filter((r) => r.due && r.due > tk)
     .sort((a, b) => a.due.localeCompare(b.due) || b.t.weight - a.t.weight);
   // This view groups by deliver-by date, so undated work gets its own section
   // at the bottom rather than being silently dropped.
   const undated = rows.filter((r) => !r.due).sort((a, b) => b.t.weight - a.t.weight);
 
+  if (overdue.length) {
+    body.appendChild(tmSection('Overdue', overdue, true));
+  }
   if (dueToday.length) {
     body.appendChild(tmSection('Due today', dueToday, true));
   }

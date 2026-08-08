@@ -24,11 +24,21 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
   falling due, so the date field is hidden for Routine and existing routine dates
   are dropped on upgrade. Routine tasks no longer show a date badge.
 
+- **Unfinished work carries forward instead of vanishing at midnight.** Rollover
+  used to delete any past-dated one-off task, so a missed task simply disappeared
+  and nothing could ever *be* overdue. Incomplete tasks now persist and stay
+  overdue; only completed ones are cleared, once archived.
+- **Overdue has its own callout**, in the danger colour, above due-today — in the
+  category boxes and as its own section in the due-date view. Folding overdue
+  into "Due today" would have understated how far behind you were.
+
 ### Fixed
 
 - The Taskmaster due-date view no longer silently omits tasks without a date;
   they group under **No date** at the bottom.
 - Calendar export skips undated tasks rather than failing on them.
+- Ticking an overdue task no longer makes it disappear on the spot; it stays
+  until rollover, like anything else completed today.
 
 ### Internal
 

@@ -228,7 +228,7 @@ function addCategory(name) {
     widget: false, expanded: false, sort: 'manual', limit: 3
   });
   save(); render(); renderCatManager();
-  fillCategorySelect($('#cCategory'), 'daily', false);
+  fillCategorySelect($('#cCategory'), defaultCatId());
   toast(`Category “${n}” created`);
 }
 

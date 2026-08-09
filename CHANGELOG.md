@@ -7,7 +7,30 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
-_Nothing yet._
+### Fixed
+
+- **A recurring task shows the date it actually next falls due.** A weekly task
+  reported today regardless of the day it was set to recur on, because the
+  deliver-by simply clamped to the current date. Recurrence is now worked out
+  from a single rule — a weekly task is anchored to the weekday of its
+  deliver-by, a daily one to the weekdays it repeats on — and a completed
+  instance points at the following one rather than the one just finished.
+
+### Changed
+
+- **A completed recurring task clears at the earlier of the next week boundary
+  and its own next recurrence.** A Mon/Wed/Fri task ticked on Wednesday returns
+  on Friday; a weekly one ticked on Wednesday returns when the week turns over,
+  not seven days later. This replaces the old rules, which reset every routine
+  and daily-recurring task at midnight and every weekly one at the week turn,
+  ignoring the days it was set to repeat on.
+- **Routine tasks can move to any category and back.** Membership used to be
+  fixed in both directions. Moving into Routine drops the deliver-by date, since
+  a chore recurs rather than falling due; moving out lets it take one again.
+- **Quick add is gone** from the category boxes; ＋ on the category header and
+  New task remain.
+- The pond theme has **lily pads and a water lily** drifting behind the app —
+  inline artwork, so nothing is fetched, and it never intercepts a click.
 
 ## [2.5.0] — 2026-08-09
 

@@ -310,6 +310,8 @@ function migrate(s) {
     if (typeOfCat(t.categoryId) === 'routine') t.deliverBy = null;
     else if (!t.deliverBy) t.deliverBy = null;
     if (t.recurring && !t.cadence) t.cadence = typeOfCat(t.categoryId) === 'weekly' ? 'weekly' : 'daily';
+    // completedAt is a clock time; recurrence needs the DATE it was completed on
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(t.completedOn || '')) t.completedOn = t.done ? (s.lastDay || null) : null;
     if (typeof t.order !== 'number') t.order = i;
   });
   s.archive.forEach((t) => { t.weight = Math.max(1, Math.min(5, Number(t.weight) || 1)); });
@@ -475,20 +477,48 @@ function weeklyProgress() {
 
 /* ---------- taskmaster helpers ---------- */
 // For recurring tasks show only the NEXT uncompleted instance date.
+/* ---------- recurrence ----------
+   `recursOn` is the single answer to "does this land on that date?", used both
+   for the deliver-by badge and for deciding when a completed instance clears.
+   A weekly task is anchored to the weekday of its deliver-by; without one it
+   falls on the first day of the week. */
+function recurAnchorWeekday(t) {
+  if (t.deliverBy) return weekdayOf(t.deliverBy);
+  return weekStartDay();
+}
+function recursOn(t, dateKey) {
+  if (!t.recurring && catType(t.categoryId) !== 'routine') return false;
+  if (t.cadence === 'weekly') return weekdayOf(dateKey) === recurAnchorWeekday(t);
+  return !t.days || !t.days.length || t.days.includes(weekdayOf(dateKey));
+}
+
+// The date this next actually falls due. Previously a weekly task simply
+// reported today, whatever weekday it was set to recur on.
 function nextInstance(t) {
   const tk = todayKey();
   if (!t.recurring) return t.deliverBy || null;
-  if (t.cadence === 'weekly') {
-    if (!t.done) return t.deliverBy > tk ? t.deliverBy : tk;
-    return addDays(tk, 7 - ((weekdayOf(tk) + 6) % 7)); // next Monday
-  }
-  for (let i = 0; i < 366; i++) {
+  // a completed instance points at the following one, not the one just finished
+  for (let i = t.done ? 1 : 0; i < 400; i++) {
     const k = addDays(tk, i);
-    if (!activeOn(t, k)) continue;
-    if (i === 0 && t.done) continue;               // already done today
-    return k;
+    if (recursOn(t, k)) return k;
   }
   return tk;
+}
+
+// When a completed recurring task should clear: the earlier of the next week
+// boundary and its own next recurrence. A Mon/Wed/Fri task done on Wednesday
+// comes back on Friday; a weekly one done on Tuesday comes back when the week
+// turns over, not seven days later.
+function resetDueOn(t) {
+  const repeats = t.recurring || catType(t.categoryId) === 'routine';
+  if (!repeats || !t.done) return null;
+  const from = t.completedOn || todayKey();
+  const weekReset = addDays(weekRangeOf(from).from, 7);
+  for (let i = 1; i < 400; i++) {
+    const k = addDays(from, i);
+    if (recursOn(t, k)) return k < weekReset ? k : weekReset;
+  }
+  return weekReset;
 }
 // null when a task carries no deliver-by date at all. Every caller must cope —
 // use hasDate()/compareDue() rather than comparing the result directly.

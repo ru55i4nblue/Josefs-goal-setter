@@ -62,9 +62,27 @@ function snapshot(list) {
   }));
 }
 
+// A completed recurring task clears when its reset point arrives — the earlier
+// of the next week boundary and its own next recurrence. This replaces the old
+// rules, which reset every routine and daily-recurring task at midnight and
+// every weekly one at the week turn, regardless of the days it recurs on.
+function clearDueRecurrences(tk = todayKey()) {
+  let n = 0;
+  state.tasks.forEach((t) => {
+    const due = resetDueOn(t);
+    if (due && tk >= due) {
+      t.done = false; t.completedAt = null; t.completedOn = null;
+      n++;
+    }
+  });
+  return n;
+}
+
 function rolloverIfNeeded() {
   const tk = todayKey(), wk = weekKey();
-  let changed = false;
+  // Reset points are dates, so check them on every boot rather than only on a
+  // day boundary — state arriving from another device can already be due.
+  let changed = clearDueRecurrences(tk) > 0;
 
   if (state.lastDay !== tk) {
     changed = true;
@@ -73,15 +91,6 @@ function rolloverIfNeeded() {
       state.dailyArchive.unshift({ date: state.lastDay, tasks: snapshot(ended) });
       state.dailyArchive = state.dailyArchive.slice(0, 7);
     }
-    // reset recurring daily/routine tasks; drop past-dated one-offs in dated categories
-    state.tasks.forEach((t) => {
-      const type = catType(t.categoryId);
-      // Routine is a standing list, so it resets every day whether or not it was
-      // ever flagged recurring.
-      if (type === 'routine' || (t.recurring && t.cadence === 'daily' && type === 'daily')) {
-        t.done = false; t.completedAt = null;
-      }
-    });
     state.tasks = state.tasks.filter((t) => {
       const type = catType(t.categoryId);
       if (type !== 'daily' && type !== 'routine') return true;
@@ -104,9 +113,6 @@ function rolloverIfNeeded() {
       state.weeklyArchive.unshift({ week: state.lastWeek, tasks: snapshot(ending) });
       state.weeklyArchive = state.weeklyArchive.slice(0, 4);
     }
-    state.tasks.forEach((t) => {
-      if (catType(t.categoryId) === 'weekly' && t.recurring) { t.done = false; t.completedAt = null; }
-    });
     state.tasks = state.tasks.filter((t) => {
       if (catType(t.categoryId) !== 'weekly' || t.recurring) return true;
       if (!t.deliverBy) return true;                  // undated is a someday pile, never swept
@@ -138,6 +144,8 @@ function toggleTask(id) {
   if (!t) return;
   t.done = !t.done;
   t.completedAt = t.done ? nowTime() : null;
+  // the DATE matters for recurrence: resetDueOn() measures from here
+  t.completedOn = t.done ? todayKey() : null;
   // completing a task in a custom category files it away in that category's archive
   if (t.done && catType(t.categoryId) === 'custom' && !t.recurring) {
     state.archive.unshift({ ...t, archivedAt: todayKey() });
@@ -208,17 +216,19 @@ function updateTask(id, patch) {
   if (!t) return;
   const title = (patch.title || '').trim();
   if (!title) return;
-  const wasRoutine = t.categoryId === 'routine';
+  // Routine membership is no longer fixed — a chore can graduate into a real
+  // category, and a task can be demoted to one.
+  if (patch.categoryId && getCat(patch.categoryId)) t.categoryId = patch.categoryId;
+  const nowRoutine = catType(t.categoryId) === 'routine';
   Object.assign(t, {
     title,
     weight: Math.max(1, Math.min(5, Number(patch.weight) || 1)),
     note: patch.note || '',
-    // '' clears the date deliberately, so don't fall back to the old value
-    deliverBy: wasRoutine ? null : (patch.deliverBy || null),
+    // '' clears the date deliberately, so don't fall back to the old value.
+    // Routine carries no date at all, so moving in drops it.
+    deliverBy: nowRoutine ? null : (patch.deliverBy || null),
     recurring: !!patch.recurring
   });
-  // routine membership is fixed — tasks can't be moved in or out of it
-  if (!wasRoutine && patch.categoryId && patch.categoryId !== 'routine') t.categoryId = patch.categoryId;
   const cat = getCat(t.categoryId);
   if (t.recurring) {
     t.cadence = patch.cadence || t.cadence || (cat.type === 'weekly' ? 'weekly' : 'daily');
@@ -399,22 +409,6 @@ function categoryBox(cat) {
     box.appendChild(more);
   }
 
-  if (cat.type === 'daily') {
-    const qa = el('input', 'quick-add');
-    qa.type = 'text';
-    qa.placeholder = '＋ Quick add — Enter to save, end with (3) for weight';
-    qa.addEventListener('keydown', (e) => {
-      if (e.key !== 'Enter') return;
-      const parsed = parseTaskLine(e.target.value);
-      if (!parsed) return;
-      // dated categories are about today's list; a persistent one shouldn't get
-      // a deadline just because it was typed quickly
-      addTask({ title: parsed.title, weight: parsed.weight, categoryId: cat.id,
-        deliverBy: cat.type === 'daily' || cat.type === 'weekly' ? todayKey() : null });
-      e.target.value = '';
-    });
-    box.appendChild(qa);
-  }
   return box;
 }
 
@@ -722,17 +716,18 @@ function pushWidget() {
    ============================================================ */
 let modalEditId = null, modalWeight = 1, modalDays = new Set(), modalCatId = 'daily';
 
-function fillCategorySelect(sel, selectedId, lockRoutine) {
+// Every category is a valid destination now, Routine included — moving into it
+// drops the task's date and weight, moving out lets it earn them back.
+function fillCategorySelect(sel, selectedId) {
   sel.innerHTML = '';
   state.categories.forEach((c) => {
-    if (c.id === 'routine' && !lockRoutine) return;       // can't move tasks into Routine
     const o = document.createElement('option');
     o.value = c.id; o.textContent = c.name;
     sel.appendChild(o);
   });
   sel.value = selectedId;
-  sel.disabled = !!lockRoutine;                            // and can't move them out
-  sel.title = lockRoutine ? "Routine tasks can't be moved to another category" : '';
+  sel.disabled = false;
+  sel.title = 'Move this task to another category';
 }
 
 function syncModalFields() {
@@ -773,7 +768,7 @@ function openModal(opts = {}) {
   $('#recurringChk').checked = false;
   $('#taskCadence').value = 'daily';
   $('#modalDateNote').classList.add('hidden');
-  fillCategorySelect($('#taskCategory'), modalCatId, modalCatId === 'routine');
+  fillCategorySelect($('#taskCategory'), modalCatId);
   document.querySelectorAll('#weightPick .w-btn').forEach((b) => b.classList.toggle('active', b.dataset.w === '1'));
   document.querySelectorAll('#dayPick button').forEach((b) => b.classList.remove('active'));
   syncModalFields();
@@ -797,7 +792,7 @@ function openEditModal(id) {
   $('#recurringChk').checked = !!t.recurring;
   $('#taskCadence').value = t.cadence || 'daily';
   $('#modalDateNote').classList.add('hidden');
-  fillCategorySelect($('#taskCategory'), modalCatId, modalCatId === 'routine');
+  fillCategorySelect($('#taskCategory'), modalCatId);
   document.querySelectorAll('#weightPick .w-btn')
     .forEach((b) => b.classList.toggle('active', Number(b.dataset.w) === t.weight));
   document.querySelectorAll('#dayPick button')
@@ -908,7 +903,7 @@ function showPage(page) {
   if (page === 'archives') renderArchive();
   if (page === 'calendar') renderCalendar();
   if (page === 'taskmaster') renderTaskArea();
-  if (page === 'create') { renderCatManager(); fillCategorySelect($('#cCategory'), 'daily', false); }
+  if (page === 'create') { renderCatManager(); fillCategorySelect($('#cCategory'), defaultCatId()); }
   if (page === 'settings') renderSettings();
 }
 

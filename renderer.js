@@ -14,14 +14,40 @@ function weightCap() {
 let state = load();
 let lastLocalEditAt = 0;
 
+// Set when load() couldn't understand the saved data. While it's true we refuse
+// to persist anything, because the in-memory state is a blank default and saving
+// it would overwrite the real save — and then sync would push the blank upward.
+let loadFailed = false;
+let loadFailure = null;
+
 function load() {
+  let raw = null;
   try {
-    const raw = GoalStore.read();
-    if (!raw) return defaultState();
+    raw = GoalStore.read();
+  } catch (e) {
+    loadFailed = true; loadFailure = e;
+    console.error('Goal Setter: could not read saved data', e);
+    return defaultState();
+  }
+  if (!raw) return defaultState();          // genuinely a first run
+  try {
     return migrate(Object.assign(defaultState(), raw));
-  } catch { return defaultState(); }
+  } catch (e) {
+    // A bug in migrate() used to end up here and silently hand back an empty
+    // state, which the next save() then wrote over the top of real data. Keep
+    // the raw payload and refuse to write until it's understood.
+    loadFailed = true; loadFailure = e;
+    window.__goalRawBackup = raw;
+    console.error('Goal Setter: saved data could not be migrated — refusing to overwrite it', e);
+    return defaultState();
+  }
 }
+
 function save() {
+  if (loadFailed) {
+    console.error('Goal Setter: save blocked; saved data was not loaded cleanly', loadFailure);
+    return;
+  }
   if (!window.__goalApplyingRemote) lastLocalEditAt = Date.now();
   GoalStore.write(state);
 }
@@ -264,7 +290,9 @@ function catOrderedTasks(cat, dateKey = todayKey()) {
 
 function categoryBox(cat) {
   const dateKey = todayKey();
-  const box = el('div', 'list-section cat-box');
+  // tint-* sets --c to the category colour; the box's border, header wash and
+  // checkboxes all key off it so each category reads as its own object.
+  const box = el('div', `list-section cat-box tint-${cat.color}`);
   box.dataset.cat = cat.id;
 
   const { overdue, dueToday, later, undated, all } = catOrderedTasks(cat, dateKey);
@@ -492,7 +520,12 @@ function commitOrder(container, cat, dateKey) {
 let lastDailyPct = 0, lastWeeklyPct = 0;
 
 function renderBars() {
-  const d = dailyProgress(), w = weeklyProgress();
+  const range = weekRangeOf();
+  // The main bar is the week, and it carries the overdue backlog with it — a
+  // week that reads 100% while last week's misses are still open would be a lie.
+  const w = progressForRange(range.from, range.to, true);
+  const d = progressForDate(todayKey());
+  const overdue = overdueTasks();
   const mobile = window.innerWidth <= 760;
   const maxTrack = mobile ? 150 : Math.max(170, Math.min(window.innerHeight * 0.42, 420));
   const minTrack = mobile ? 84 : Math.max(110, maxTrack * 0.45);
@@ -500,29 +533,34 @@ function renderBars() {
   $('#weeklyTopFill').style.width = w.pct + '%';
   $('#weeklyTopPct').textContent = Math.round(w.pct) + '%';
 
-  const weeklyFill = $('#weeklyBarFill');
-  weeklyFill.parentElement.style.height = Math.round(maxTrack / 3) + 'px';
-  weeklyFill.style.height = w.pct + '%';
-  $('#weeklyPct').textContent = Math.round(w.pct) + '%';
-  if (w.pct > lastWeeklyPct + 0.1) {
-    weeklyFill.classList.remove('bump'); void weeklyFill.offsetWidth; weeklyFill.classList.add('bump');
+  const miniFill = $('#miniBarFill');
+  miniFill.parentElement.style.height = Math.round(maxTrack / 3) + 'px';
+  miniFill.style.height = d.pct + '%';
+  $('#miniPct').textContent = Math.round(d.pct) + '%';
+  if (d.pct > lastDailyPct + 0.1) {
+    miniFill.classList.remove('bump'); void miniFill.offsetWidth; miniFill.classList.add('bump');
   }
 
   const cap = weightCap();
-  const grow = Math.min(d.total / cap, 1);
-  $('#dailyTrack').style.height = (minTrack + grow * (maxTrack - minTrack)) + 'px';
+  const grow = Math.min(w.total / cap, 1);
+  $('#mainTrack').style.height = (minTrack + grow * (maxTrack - minTrack)) + 'px';
 
-  const fill = $('#dailyBarFill');
-  fill.style.height = d.pct + '%';
-  if (d.pct > lastDailyPct + 0.1) {
+  const fill = $('#mainBarFill');
+  fill.style.height = w.pct + '%';
+  if (w.pct > lastWeeklyPct + 0.1) {
     fill.classList.remove('bump'); void fill.offsetWidth; fill.classList.add('bump');
-    emitSparks(d.pct);
-    if (d.pct >= 99.9 && lastDailyPct < 99.9) celebrate();
+    emitSparks(w.pct);
+    if (w.pct >= 99.9 && lastWeeklyPct < 99.9) celebrate();
   }
   lastDailyPct = d.pct; lastWeeklyPct = w.pct;
 
-  $('#dailyPct').textContent = Math.round(d.pct) + '%';
-  $('#dailyMeta').textContent = d.total ? `${d.done}/${d.total} weight · cap ${cap}` : 'add tasks to begin';
+  $('#mainPct').textContent = Math.round(w.pct) + '%';
+  $('#weekRangeLabel').textContent = `${shortDate(range.from)} – ${shortDate(range.to)}`;
+  $('#weekRangeLabel').title =
+    `Week runs ${prettyDate(range.from)} to ${prettyDate(range.to)} · change the start day in Settings`;
+  $('#mainMeta').textContent = w.total
+    ? `${w.done}/${w.total} weight${overdue.length ? ` · ${overdue.length} overdue` : ''}`
+    : 'add dated tasks to begin';
 }
 
 function spark(burst, leftPct, topPct, spread) {
@@ -537,11 +575,11 @@ function spark(burst, leftPct, topPct, spread) {
   setTimeout(() => s.remove(), 700);
 }
 function emitSparks(pct) {
-  const burst = $('#dailyBurst');
+  const burst = $('#mainBurst');
   for (let i = 0; i < 12; i++) spark(burst, 50, 100 - Math.min(pct, 100), 20);
 }
 function celebrate() {
-  const burst = $('#dailyBurst');
+  const burst = $('#mainBurst');
   for (let wave = 0; wave < 3; wave++) {
     setTimeout(() => {
       for (let i = 0; i < 14; i++) spark(burst, 20 + Math.random() * 60, Math.random() * 100, 26);

@@ -73,33 +73,35 @@
         <div id="categoryCols"></div>
       </section>
 
-      <!-- PROGRESS BARS: right third, vertical, weekly stacked on top of daily -->
+      <!-- PROGRESS BARS: right third, vertical. The main (tall) bar is the week,
+           including anything still overdue; the small one is just today. -->
       <section class="bars-col">
         <div class="bars-stack">
           <div class="vbar-group">
             <div class="vbar-readout">
-              <span id="weeklyPct" class="vpct neon">0%</span>
-              <span class="vlabel"><span class="dot weekly-dot"></span>weekly</span>
+              <span id="miniPct" class="vpct purple">0%</span>
+              <span class="vlabel"><span class="dot daily-dot"></span>today</span>
             </div>
             <div class="vbar-track">
-              <div id="weeklyBarFill" class="vbar-fill weekly"></div>
+              <div id="miniBarFill" class="vbar-fill daily"></div>
             </div>
           </div>
 
           <div class="vbar-group">
-            <div id="dailyTrack" class="vbar-track">
-              <div id="dailyBarFill" class="vbar-fill daily"></div>
+            <div id="mainTrack" class="vbar-track">
+              <div id="mainBarFill" class="vbar-fill weekly"></div>
               <div class="vticks">
                 <span class="vtick" style="bottom:25%"></span>
                 <span class="vtick" style="bottom:50%"></span>
                 <span class="vtick" style="bottom:75%"></span>
               </div>
-              <div id="dailyBurst" class="burst"></div>
+              <div id="mainBurst" class="burst"></div>
             </div>
             <div class="vbar-readout">
-              <span id="dailyPct" class="vpct purple">0%</span>
-              <span class="vlabel"><span class="dot daily-dot"></span>daily</span>
-              <span id="dailyMeta" class="daily-meta"></span>
+              <span id="mainPct" class="vpct neon">0%</span>
+              <span class="vlabel"><span class="dot weekly-dot"></span>this week</span>
+              <span id="weekRangeLabel" class="week-range"></span>
+              <span id="mainMeta" class="daily-meta"></span>
             </div>
           </div>
         </div>
@@ -225,6 +227,10 @@
 
         <label class="field-label">Deliver-by dates show</label>
         <select id="setDueDisplay" class="text-input"></select>
+
+        <label class="field-label">Week starts on</label>
+        <select id="setWeekStart" class="text-input"></select>
+        <p class="modal-hint" id="weekStartHint"></p>
 
         <div id="dateFormatPreview" class="date-preview"></div>
       </section>

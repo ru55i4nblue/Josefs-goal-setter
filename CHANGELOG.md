@@ -16,6 +16,21 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ### Changed
 
+- **The main progress bar is now the week, and it carries the overdue backlog.**
+  Anything still outstanding from before this week counts towards it, so the bar
+  can't read 100% while last week's misses are open. Today gets the smaller bar.
+  Progress is computed from deliver-by dates rather than category type, which is
+  what allows Daily and Weekly to be deleted at all.
+- **The week's start day is yours to choose**, in Settings, and the resulting
+  range is printed next to the bar. The whole app now agrees on that boundary —
+  the bar, the weekly archive, the calendar week and the recurring-task reset.
+- **Categories read as distinct cards.** Each has a solid edge in its own colour,
+  a tinted header, a shaded body and a full-strength heading. Previously they were
+  bare lists separated only by a gap, headed at 13px in a grey measuring 2.8:1.
+- **Checkboxes are visible before you tick them.** They were a 1.8px hairline in
+  a border grey at roughly 1.3:1 against the page. They're now larger, thicker,
+  and carry their category's colour unticked as well as ticked.
+
 - **Every category can be renamed and deleted, including Daily and Weekly.**
   They were previously resurrected on every load. Deleting one moves its tasks to
   another category — never into Routine, which would strip their dates — with an
@@ -34,11 +49,29 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ### Fixed
 
+- **Data loss on upgrade.** Converting `lastWeek` from the old ISO week format
+  read a variable declared later in `migrate()`, throwing a reference error.
+  `load()` caught it, returned an empty default, and the next save wrote that over
+  the real data — then sync pushed the blank state to every other device. The
+  conversion now uses `todayKey()` directly.
+- **A failed load can no longer destroy a good save.** `load()` used to swallow
+  any error and hand back an empty state, which then looked like legitimate data
+  to save and to sync. It now records the failure, keeps the raw payload, and
+  blocks both saving and cloud pushes until the data is understood.
+- **An empty cloud payload can never replace local work**, whatever schema
+  version it claims. One device that failed to load its own save could publish a
+  blank state that every other device then faithfully adopted. The blank is now
+  refused and the good local state is republished in its place.
+
 - The Taskmaster due-date view no longer silently omits tasks without a date;
   they group under **No date** at the bottom.
 - Calendar export skips undated tasks rather than failing on them.
 - Ticking an overdue task no longer makes it disappear on the spot; it stays
   until rollover, like anything else completed today.
+- Category colours are legible on a light background. Neon, amber, teal and grey
+  were between 2.1:1 and 2.8:1 as a card edge or checkbox outline, under the 3:1
+  minimum for a non-text indicator; light mode now uses darkened variants while
+  dark mode keeps the vivid palette.
 
 ### Internal
 

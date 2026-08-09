@@ -18,14 +18,12 @@
 /* ---------- date helpers ---------- */
 const pad = (n) => String(n).padStart(2, '0');
 const todayKey = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-function weekKey(d = new Date()) {
-  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  const day = (date.getUTCDay() + 6) % 7; // Mon=0
-  date.setUTCDate(date.getUTCDate() - day + 3);
-  const firstThursday = new Date(Date.UTC(date.getUTCFullYear(), 0, 4));
-  const week = 1 + Math.round((date - firstThursday) / (7 * 864e5));
-  return `${date.getUTCFullYear()}-W${pad(week)}`;
-}
+// A week is identified by the date it starts on, which follows the user's chosen
+// start day. Keying it this way makes the progress bar, the weekly archive and
+// the recurring-task reset agree on where the week breaks — an ISO week number
+// would have pinned them to Monday no matter what the user picked. It also
+// compares correctly across a year boundary, which "2026-W01" does not.
+function weekKey(d = new Date()) { return weekRangeOf(todayKey(d)).from; }
 const nowTime = () => {
   const d = new Date();
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
@@ -146,9 +144,13 @@ function addDays(key, n) {
   return todayKey(new Date(y, m - 1, d + n));
 }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
-// Monday of the week containing `key`
-function mondayOf(key) { return addDays(key, -((weekdayOf(key) + 6) % 7)); }
-function weekDays(mondayKey) { return Array.from({ length: 7 }, (_, i) => addDays(mondayKey, i)); }
+// First day of the week containing `key`, per the user's chosen start day.
+function mondayOf(key) { return weekRangeOf(key).from; }
+function weekDays(startKey) { return Array.from({ length: 7 }, (_, i) => addDays(startKey, i)); }
+// "3 – 9 Aug", for labelling a week without spelling both dates out in full.
+function weekRangeLabel(startKey) {
+  return `${shortDate(startKey)} – ${shortDate(addDays(startKey, 6))}`;
+}
 
 /* ---------- defaults ---------- */
 // Selectable category colours (id -> label). Also used for swatches in the UI.
@@ -176,7 +178,8 @@ function defaultState() {
     settings: {
       showImport: true, showWeightNotes: true,
       dateFormat: DEFAULT_DATE_FORMAT, dueDisplay: 'both',
-      widgetMode: 'categories', widgetCategory: 'daily', widgetTop: 5
+      widgetMode: 'categories', widgetCategory: 'daily', widgetTop: 5,
+      weekStart: 1
     },
     taskmasterView: 'categories',   // 'categories' (per-category boxes) | 'grouped' (one due-today box)
     lastDay: todayKey(),
@@ -223,6 +226,18 @@ function migrate(s) {
   if (typeof s.settings.widgetCategory !== 'string') s.settings.widgetCategory = 'daily';
   s.settings.widgetTop = Math.max(WIDGET_TOP_MIN,
     Math.min(WIDGET_TOP_MAX, Math.round(Number(s.settings.widgetTop)) || 5));
+  if (!WEEK_STARTS.some(([d]) => d === s.settings.weekStart)) s.settings.weekStart = 1;
+  // lastWeek used to be an ISO week number ("2026-W32"). Rewrite it to the new
+  // start-date form for the CURRENT week, so upgrading doesn't look like a week
+  // boundary and fire a spurious archive + recurring reset.
+  if (/^\d{4}-W\d{2}$/.test(s.lastWeek || '')) {
+    // NB: use todayKey() directly — `today` is declared further down, so reading
+    // it here threw a TDZ ReferenceError, which load()'s catch turned into a
+    // silent reset to defaultState().
+    const now = todayKey();
+    const back = (weekdayOf(now) - s.settings.weekStart + 7) % 7;
+    s.lastWeek = addDays(now, -back);
+  }
   if (s.taskmasterView !== 'grouped') s.taskmasterView = 'categories';
 
   // --- fold the old v1 arrays into the unified task list (once) ---
@@ -380,15 +395,62 @@ function scoredDailyTasks(dateKey = todayKey()) {
 function weeklyTasksNow(dateKey = todayKey()) {
   return state.categories.filter((c) => c.type === 'weekly').flatMap((c) => catTasksFor(c.id, dateKey));
 }
-function dailyProgress() {
-  const l = scoredDailyTasks();
-  const total = sumWeight(l);
-  return { total, done: sumDone(l), pct: total ? (sumDone(l) / total) * 100 : 0 };
+/* ---------- date-driven progress ----------
+   Progress keys off deliver-by dates, not category type. That's what lets Daily
+   and Weekly be deleted like any other category, and it's why an undated task
+   counts towards nothing: it has no date to fall inside a range. */
+
+// Which weekday the week turns over on. 0 = Sunday … 6 = Saturday.
+const WEEK_STARTS = [
+  [1, 'Monday'], [2, 'Tuesday'], [3, 'Wednesday'], [4, 'Thursday'],
+  [5, 'Friday'], [6, 'Saturday'], [0, 'Sunday']
+];
+function weekStartDay() {
+  // defaultState() and the calendar's initial week both run while `state` is
+  // still in its temporal dead zone, so this has to survive being asked early.
+  // `typeof` doesn't help — it throws on a TDZ binding — hence the try.
+  let n = 1;
+  try { if (state && state.settings) n = Number(state.settings.weekStart); } catch { n = 1; }
+  return Number.isInteger(n) && n >= 0 && n <= 6 ? n : 1;
 }
-function weeklyProgress() {
-  const l = weeklyTasksNow();
+function weekRangeOf(dateKey = todayKey()) {
+  const back = (weekdayOf(dateKey) - weekStartDay() + 7) % 7;
+  const from = addDays(dateKey, -back);
+  return { from, to: addDays(from, 6) };
+}
+
+// Incomplete, dated and weighted work whose deliver-by has already passed.
+function overdueTasks(dateKey = todayKey()) {
+  return state.tasks.filter((t) => !t.done && hasDate(t)
+    && catHasWeight(t.categoryId) && dueDateOf(t) < dateKey);
+}
+
+const asProgress = (l) => {
   const total = sumWeight(l);
-  return { total, done: sumDone(l), pct: total ? (sumDone(l) / total) * 100 : 0 };
+  return { total, done: sumDone(l), pct: total ? (sumDone(l) / total) * 100 : 0, count: l.length };
+};
+
+// Weighted progress over dated tasks falling in [fromKey..toKey]. With
+// includeOverdue, anything still outstanding from before the range is counted
+// too — a backlog you're carrying is part of where you actually stand.
+function progressForRange(fromKey, toKey, includeOverdue) {
+  const tk = todayKey();
+  const pool = state.tasks.filter((t) => {
+    if (!catHasWeight(t.categoryId) || !hasDate(t)) return false;
+    const d = dueDateOf(t);
+    if (d >= fromKey && d <= toKey) return true;
+    return !!includeOverdue && !t.done && d < tk && d < fromKey;
+  });
+  return asProgress(pool);
+}
+function progressForDate(dateKey = todayKey()) { return progressForRange(dateKey, dateKey, false); }
+
+// Kept as named wrappers so existing callers (the widget sections) keep reading
+// naturally; both are now date-scoped rather than category-scoped.
+function dailyProgress() { return progressForDate(todayKey()); }
+function weeklyProgress() {
+  const w = weekRangeOf();
+  return progressForRange(w.from, w.to, true);
 }
 
 /* ---------- taskmaster helpers ---------- */

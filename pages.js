@@ -5,6 +5,12 @@
 /* ============================================================
    Taskmaster — everything ahead, by deliver-by date
    ============================================================ */
+// Weekly archive entries used to be keyed by ISO week ("2026-W32") and are now
+// keyed by the week's start date. Older entries stay readable as-is.
+function weekArchiveLabel(week) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(week || '') ? weekRangeLabel(week) : String(week || '');
+}
+
 function renderGroupedView(body) {
   const tk = todayKey();
 
@@ -250,8 +256,26 @@ function renderSettings() {
     due.appendChild(o);
   });
   due.value = state.settings.dueDisplay || 'both';
+
+  const ws = $('#setWeekStart');
+  ws.innerHTML = '';
+  WEEK_STARTS.forEach(([day, label]) => {
+    const o = document.createElement('option');
+    o.value = String(day); o.textContent = label;
+    ws.appendChild(o);
+  });
+  ws.value = String(weekStartDay());
+  updateWeekStartHint();
+
   updateDatePreview();
   renderWidgetSettings();
+}
+
+// Spell the current week out, since "starts on Wednesday" is hard to picture.
+function updateWeekStartHint() {
+  const r = weekRangeOf();
+  $('#weekStartHint').textContent =
+    `This week runs ${prettyDate(r.from)} — ${prettyDate(r.to)}.`;
 }
 
 function renderWidgetSettings() {
@@ -353,7 +377,7 @@ function renderArchive() {
     const color = archiveTab === 'daily' ? 'var(--purple)' : 'var(--neon)';
     const card = el('div', 'archive-card');
     card.innerHTML = `
-      <h3>${escapeHtml(archiveTab === 'daily' ? prettyDate(entry.date) : entry.week)}</h3>
+      <h3>${escapeHtml(archiveTab === 'daily' ? prettyDate(entry.date) : weekArchiveLabel(entry.week))}</h3>
       <div class="arch-sub">${done}/${total} weight completed · ${pct}%</div>
       <div class="arch-bar"><div style="width:${pct}%;background:${color}"></div></div>`;
     entry.tasks.forEach((t) => {
@@ -748,10 +772,27 @@ function refreshFullUI() {
 // about `tasks`. If such a client is still running on another device it will push
 // its own shape and blank out everything here, so refuse those payloads and push
 // our (newer) state back instead of adopting them.
+// If local data failed to load, the in-memory state is a blank default. Pushing
+// that would replace good cloud data with nothing, on every device.
+function cloudPush(what) {
+  if (loadFailed) {
+    console.error('Goal Setter: cloud push blocked; local data was not loaded cleanly');
+    return;
+  }
+  if (window.GoalCloud && window.GoalCloud.push) window.GoalCloud.push(what);
+}
+
 function isStaleSchema(remote) {
   if (!remote) return true;
-  if (remote.version >= 3) return false;
   const localHasTasks = Array.isArray(state.tasks) && state.tasks.length;
+  // Never let an empty cloud payload replace local work, whatever version it
+  // claims. A device that failed to load its own save once pushed a blank state
+  // up, and every other device then faithfully adopted the blank over good data.
+  // Deleting your last task is legitimate but rare; this costs one Undo at worst
+  // and prevents a total wipe at best.
+  const remoteIsEmpty = !Array.isArray(remote.tasks) || !remote.tasks.length;
+  if (remoteIsEmpty && localHasTasks) return true;
+  if (remote.version >= 3) return false;
   // A v2 client has no concept of an undated task: its migrate() stamps today's
   // date onto anything without one, which would re-date the whole someday pile
   // and hand every routine chore a meaningless deadline. Refuse it — but only
@@ -766,8 +807,10 @@ function onRemoteState(remote) {
   if (!remote || !Object.keys(remote).length) return;
   if (Date.now() - lastLocalEditAt < 2000) return;
   if (isStaleSchema(remote)) {
-    if (window.GoalCloud && window.GoalCloud.push) window.GoalCloud.push(state);
-    toast('Another device is running an old version — update it to sync');
+    cloudPush(state);
+    toast(Array.isArray(remote.tasks) && remote.tasks.length
+      ? 'Another device is running an old version — update it to sync'
+      : 'Ignored an empty update from the cloud — the tasks on this device were kept');
     return;
   }
   window.__goalApplyingRemote = true;
@@ -782,7 +825,7 @@ async function hydrateFromCloud() {
   const remote = await window.GoalCloud.pull();
   if (remote && Object.keys(remote).length && isStaleSchema(remote)) {
     // don't adopt an old-format payload over newer local data — republish ours
-    window.GoalCloud.push(state);
+    cloudPush(state);
     refreshFullUI();
     if (!unsubRemote) unsubRemote = GoalStore.subscribe(onRemoteState);
     updateAccountUI();
@@ -794,7 +837,7 @@ async function hydrateFromCloud() {
     finally { window.__goalApplyingRemote = false; }
   } else {
     refreshFullUI();
-    window.GoalCloud.push(state);
+    cloudPush(state);
   }
   if (!unsubRemote) unsubRemote = GoalStore.subscribe(onRemoteState);
   updateAccountUI();
@@ -975,6 +1018,14 @@ function wire() {
   };
   $('#setDateFormat').onchange = (e) => { state.settings.dateFormat = e.target.value; applyDateSetting(); };
   $('#setDueDisplay').onchange = (e) => { state.settings.dueDisplay = e.target.value; applyDateSetting(); };
+  $('#setWeekStart').onchange = (e) => {
+    state.settings.weekStart = Number(e.target.value);
+    // Moving the boundary changes what weekKey() returns, which would otherwise
+    // read as "a new week has begun" and fire an archive + recurring reset.
+    state.lastWeek = weekKey();
+    save(); updateWeekStartHint(); render();
+    if (currentPage === 'calendar') renderCalendar();
+  };
 
   /* ---- widget layout ---- */
   $('#setWidgetMode').onchange = (e) => {

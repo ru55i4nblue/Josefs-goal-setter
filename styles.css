@@ -239,13 +239,17 @@ html, body {
 .task-row:hover .drag-handle { opacity: .55; }
 .drag-handle:active { cursor: grabbing; }
 
+/* An unticked box used to be a 1.8px --border-strong outline — about 1.3:1
+   against the page, effectively invisible. It's now larger, thicker, and wears
+   its category's colour before it's ticked, not only after. */
 .checkbox {
-  width: 19px; height: 19px; flex-shrink: 0;
-  border: 1.8px solid var(--border-strong); border-radius: 5px;
+  width: 21px; height: 21px; flex-shrink: 0;
+  border: 2px solid var(--c, var(--text-soft)); border-radius: 6px;
+  background: var(--bg);
   cursor: pointer; position: relative;
   transition: background .18s ease, border-color .18s ease, transform .12s ease;
 }
-.checkbox:hover { border-color: var(--text-faint); }
+.checkbox:hover { box-shadow: 0 0 0 3px color-mix(in srgb, var(--c, var(--text-soft)) 22%, transparent); }
 .checkbox.daily.checked { background: var(--purple); border-color: var(--purple); box-shadow: 0 0 10px var(--purple-glow); }
 .checkbox.weekly.checked { background: var(--neon); border-color: var(--neon); box-shadow: 0 0 10px var(--neon-glow); }
 .checkbox.checked::after {
@@ -508,9 +512,33 @@ body.dark .cal-pill.weekly { color: var(--neon); }
 }
 
 /* ===================== CATEGORY BOXES (v2) ===================== */
-.cat-box { flex: 0 0 auto; }
+/* Categories used to be bare stacked lists separated only by a gap, with a 13px
+   --text-faint heading measuring 2.8:1 — which is why they ran together. Each is
+   now a card carrying its own colour: a solid left edge, a tinted header wash,
+   and a heading in full-strength text. */
+.cat-box {
+  flex: 0 0 auto;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--c, var(--border-strong));
+  border-radius: 10px;
+  padding: 0 12px 12px;
+  box-shadow: var(--shadow);
+}
+.cat-box .section-head {
+  margin: 0 -12px 10px;
+  padding: 11px 14px 10px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--c, transparent) 12%, transparent);
+}
+.cat-box .section-head h2 {
+  font-size: 14px; text-transform: none; letter-spacing: 0;
+  color: var(--text); font-weight: 600;
+  display: flex; align-items: center; gap: 7px;
+}
+.cat-box .cat-dot { font-size: 11px; }
 .cat-count {
-  font-size: 11px; font-weight: 600; color: var(--text-faint);
+  font-size: 12px; font-weight: 600; color: var(--text-soft);
   margin-left: 8px; letter-spacing: 0;
 }
 .cat-dot { font-size: 9px; }
@@ -763,15 +791,23 @@ body.dark .checkbox.neon.checked::after { color: #08130c; }
 .settings-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 .cat-manager { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
 /* Each row wears its category's colour, so a reorder is obvious at a glance. */
+/* --c is the category's identity colour: card edge, header wash and checkbox
+   border all key off it. On a light background the vivid palette is far too weak
+   to carry a 2px outline — neon measured 2.3:1, amber 2.15:1, against a 3:1 floor
+   for a non-text indicator — so light mode uses darkened variants and dark mode
+   restores the vivid ones below. */
 .tint-purple { --c: #8b5cf6; }
-.tint-neon   { --c: #16c46a; }
+.tint-neon   { --c: #0f8f50; }
 .tint-blue   { --c: #3b82f6; }
-.tint-amber  { --c: #f59e0b; }
+.tint-amber  { --c: #a86a04; }
 .tint-pink   { --c: #ec4899; }
-.tint-teal   { --c: #14b8a6; }
+.tint-teal   { --c: #0d7d70; }
 .tint-red    { --c: #ef4444; }
-.tint-gray   { --c: #9b9a97; }
-body.dark .tint-neon { --c: #2bff88; }
+.tint-gray   { --c: #7b7a77; }
+body.dark .tint-neon  { --c: #2bff88; }
+body.dark .tint-amber { --c: #f59e0b; }
+body.dark .tint-teal  { --c: #14b8a6; }
+body.dark .tint-gray  { --c: #9b9a97; }
 
 .cat-row {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;

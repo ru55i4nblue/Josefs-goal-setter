@@ -511,14 +511,13 @@ function commitOrder(container, cat, dateKey) {
 /* ============================================================
    Progress bars
    ============================================================ */
-let lastDailyPct = 0, lastWeeklyPct = 0;
+let lastWeeklyPct = 0;
 
 function renderBars() {
   const range = weekRangeOf();
   // The main bar is the week, and it carries the overdue backlog with it — a
   // week that reads 100% while last week's misses are still open would be a lie.
   const w = progressForRange(range.from, range.to, true);
-  const d = progressForDate(todayKey());
   const overdue = overdueTasks();
   const mobile = window.innerWidth <= 760;
   const maxTrack = mobile ? 150 : Math.max(170, Math.min(window.innerHeight * 0.42, 420));
@@ -526,14 +525,6 @@ function renderBars() {
 
   $('#weeklyTopFill').style.width = w.pct + '%';
   $('#weeklyTopPct').textContent = Math.round(w.pct) + '%';
-
-  const miniFill = $('#miniBarFill');
-  miniFill.parentElement.style.height = Math.round(maxTrack / 3) + 'px';
-  miniFill.style.height = d.pct + '%';
-  $('#miniPct').textContent = Math.round(d.pct) + '%';
-  if (d.pct > lastDailyPct + 0.1) {
-    miniFill.classList.remove('bump'); void miniFill.offsetWidth; miniFill.classList.add('bump');
-  }
 
   const cap = weightCap();
   const grow = Math.min(w.total / cap, 1);
@@ -546,7 +537,7 @@ function renderBars() {
     emitSparks(w.pct);
     if (w.pct >= 99.9 && lastWeeklyPct < 99.9) celebrate();
   }
-  lastDailyPct = d.pct; lastWeeklyPct = w.pct;
+  lastWeeklyPct = w.pct;
 
   $('#mainPct').textContent = Math.round(w.pct) + '%';
   $('#weekRangeLabel').textContent = `${shortDate(range.from)} – ${shortDate(range.to)}`;

@@ -7,7 +7,18 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Removed
+
+- **The "today" progress bar.** With the main bar covering the week and the
+  up-to-date indicator calling out anything overdue, it was saying nothing the
+  rest of the column wasn't.
+
 ### Fixed
+
+- **Dialogs rendered below the page in the pond theme instead of over it.**
+  Lifting the app above the lily pads gave `.modal-overlay` `position: relative`,
+  which dropped it out of the viewport and into normal document flow. Only
+  elements that are `static` by default are lifted now.
 
 - **A recurring task shows the date it actually next falls due.** A weekly task
   reported today regardless of the day it was set to recur on, because the

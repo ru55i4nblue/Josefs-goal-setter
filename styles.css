@@ -127,8 +127,11 @@ body.pond::before {
     99% 6%,
     93% 96%;
 }
-/* everything real sits above the water */
-body.pond .app-body, body.pond .weekly-bar-wrap, body.pond .modal-overlay { position: relative; z-index: 1; }
+/* Everything real sits above the water. Only elements that are `static` by
+   default belong here — .modal-overlay is already fixed at z-index 50, and
+   giving it position:relative dropped it out of the viewport and into normal
+   flow, so the dialog painted below the page instead of over it. */
+body.pond .app-body, body.pond .weekly-bar-wrap { position: relative; z-index: 1; }
 @media (prefers-reduced-motion: no-preference) {
   body.pond::before { transition: background-position 1.2s ease; }
 }

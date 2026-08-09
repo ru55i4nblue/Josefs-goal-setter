@@ -76,6 +76,12 @@
       <!-- PROGRESS BARS: right third, vertical. The main (tall) bar is the week,
            including anything still overdue; the small one is just today. -->
       <section class="bars-col">
+        <!-- Are we straight? One glance, before any percentage. -->
+        <div id="clearIndicator" class="clear-indicator">
+          <span id="clearIcon" class="clear-icon">✓</span>
+          <span id="clearText" class="clear-text">Up to date</span>
+        </div>
+        <div id="milestoneBars" class="milestone-bars"></div>
         <div class="bars-stack">
           <div class="vbar-group">
             <div class="vbar-readout">
@@ -222,6 +228,9 @@
           <span>Show weight notes inline under task names</span>
         </label>
 
+        <label class="field-label">Theme</label>
+        <select id="setTheme" class="text-input"></select>
+
         <label class="field-label">Date format</label>
         <select id="setDateFormat" class="text-input"></select>
 
@@ -231,6 +240,19 @@
         <label class="field-label">Week starts on</label>
         <select id="setWeekStart" class="text-input"></select>
         <p class="modal-hint" id="weekStartHint"></p>
+      </section>
+
+      <section class="create-card settings-card">
+        <h2 class="create-h2">Milestones</h2>
+        <p class="modal-hint">A bar showing how much of everything due by a given
+          date is done — an exam, a hand-in, the end of term. Up to four.</p>
+        <div id="milestoneList" class="milestone-list"></div>
+        <div class="milestone-add">
+          <input id="milestoneName" class="text-input" type="text" maxlength="40"
+                 placeholder="Name, e.g. ENCH391 exam" />
+          <input id="milestoneDate" class="text-input milestone-date" type="date" />
+          <button id="milestoneAdd" class="btn-ghost btn-small">＋ Add</button>
+        </div>
 
         <div id="dateFormatPreview" class="date-preview"></div>
       </section>

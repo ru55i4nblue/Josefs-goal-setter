@@ -561,6 +561,57 @@ function renderBars() {
   $('#mainMeta').textContent = w.total
     ? `${w.done}/${w.total} weight${overdue.length ? ` · ${overdue.length} overdue` : ''}`
     : 'add dated tasks to begin';
+
+  renderClearIndicator(overdue);
+  renderMilestones();
+}
+
+// "Are we straight?" answered before any percentage. Undated work is a someday
+// pile and never counts against being up to date.
+function renderClearIndicator(overdue = overdueTasks()) {
+  const box = $('#clearIndicator');
+  const behind = overdue.length > 0;
+  box.classList.toggle('behind', behind);
+  $('#clearIcon').textContent = behind ? '!' : '✓';
+  $('#clearText').textContent = behind
+    ? `${overdue.length} overdue · ${sumWeight(overdue)} weight`
+    : 'Up to date';
+  box.title = behind
+    ? overdue.map((t) => `${t.title} — ${relativeDue(dueDateOf(t))}`).join('\n')
+    : 'Nothing is past its deliver-by date';
+}
+
+function renderMilestones() {
+  const host = $('#milestoneBars');
+  host.innerHTML = '';
+  const list = (state.settings.milestones || []);
+  list.forEach((m) => {
+    const p = progressUpTo(m.date);
+    const days = daysUntil(m.date);
+    const row = el('div', 'milestone' + (days < 0 ? ' past' : ''));
+
+    const head = el('div', 'milestone-head');
+    const nm = el('span', 'milestone-name');
+    nm.textContent = m.name;
+    const pc = el('span', 'milestone-pct');
+    pc.textContent = Math.round(p.pct) + '%';
+    head.appendChild(nm); head.appendChild(pc);
+    row.appendChild(head);
+
+    const track = el('div', 'milestone-track');
+    const fill = el('div', 'milestone-fill');
+    fill.style.width = p.pct + '%';
+    track.appendChild(fill);
+    row.appendChild(track);
+
+    const sub = el('div', 'milestone-sub');
+    sub.textContent = `${shortDate(m.date)} · ${relativeDue(m.date)}`
+      + (p.total ? ` · ${p.done}/${p.total} weight` : ' · nothing due yet');
+    row.appendChild(sub);
+
+    row.title = `Everything with a deliver-by date on or before ${prettyDate(m.date)}`;
+    host.appendChild(row);
+  });
 }
 
 function spark(burst, leftPct, topPct, spread) {
@@ -819,8 +870,20 @@ function toast(msg, actionLabel, actionFn) {
    Theme / platform / nav
    ============================================================ */
 function applyTheme() {
-  document.body.classList.toggle('dark', state.theme === 'dark');
-  $('#themeToggle').textContent = state.theme === 'dark' ? '☀️ Light mode' : '🌙 Dark mode';
+  const t = themeId(state.theme);
+  // Themes are mutually exclusive classes rather than one boolean, so a third
+  // one could be added without touching every existing `body.dark` rule.
+  document.body.classList.toggle('dark', t === 'dark');
+  document.body.classList.toggle('pond', t === 'pond');
+  document.body.dataset.theme = t;
+  const btn = $('#themeToggle');
+  if (btn) {
+    const next = THEMES[(THEMES.findIndex(([id]) => id === t) + 1) % THEMES.length];
+    btn.textContent = `${THEME_ICONS[t]} Theme: ${themeLabel(t)}`;
+    btn.title = `Switch to ${themeLabel(next[0])}`;
+  }
+  const sel = $('#setTheme');
+  if (sel) sel.value = t;
 }
 function applyPlatformUI() {
   if (!window.goalAPI) {

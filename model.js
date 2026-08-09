@@ -120,6 +120,12 @@ function dueLabel(key) {
   if (mode === 'days') return relativeDue(key);
   return `${prettyDate(key)} · ${relativeDue(key)}`;
 }
+/* ---------- themes ---------- */
+const THEMES = [['light', 'Light'], ['dark', 'Dark'], ['pond', 'Pond']];
+const THEME_ICONS = { light: '☀️', dark: '🌙', pond: '🪷' };
+const themeId = (t) => (THEMES.some(([id]) => id === t) ? t : 'light');
+const themeLabel = (t) => (THEMES.find(([id]) => id === themeId(t)) || THEMES[0])[1];
+
 /* ---------- how the sticky widget condenses itself ---------- */
 // A stack of category boxes gets unwieldy once there are more than two or three,
 // so the widget can also show one category, or a single merged shortlist.
@@ -179,7 +185,7 @@ function defaultState() {
       showImport: true, showWeightNotes: true,
       dateFormat: DEFAULT_DATE_FORMAT, dueDisplay: 'both',
       widgetMode: 'categories', widgetCategory: 'daily', widgetTop: 5,
-      weekStart: 1
+      weekStart: 1, milestones: []
     },
     taskmasterView: 'categories',   // 'categories' (per-category boxes) | 'grouped' (one due-today box)
     lastDay: todayKey(),
@@ -227,6 +233,13 @@ function migrate(s) {
   s.settings.widgetTop = Math.max(WIDGET_TOP_MIN,
     Math.min(WIDGET_TOP_MAX, Math.round(Number(s.settings.widgetTop)) || 5));
   if (!WEEK_STARTS.some(([d]) => d === s.settings.weekStart)) s.settings.weekStart = 1;
+  // Milestones: user-defined "everything due by this date" bars. Anything without
+  // a usable date is dropped rather than allowed to break the bars column.
+  if (!Array.isArray(s.settings.milestones)) s.settings.milestones = [];
+  s.settings.milestones = s.settings.milestones
+    .filter((m) => m && /^\d{4}-\d{2}-\d{2}$/.test(m.date))
+    .map((m) => ({ id: m.id || uid(), name: String(m.name || 'Milestone').slice(0, 40), date: m.date }))
+    .slice(0, MILESTONE_MAX);
   // lastWeek used to be an ISO week number ("2026-W32"). Rewrite it to the new
   // start-date form for the CURRENT week, so upgrading doesn't look like a week
   // boundary and fire a spurious archive + recurring reset.
@@ -239,6 +252,7 @@ function migrate(s) {
     s.lastWeek = addDays(now, -back);
   }
   if (s.taskmasterView !== 'grouped') s.taskmasterView = 'categories';
+  s.theme = themeId(s.theme);
 
   // --- fold the old v1 arrays into the unified task list (once) ---
   const today = s.lastDay || todayKey();
@@ -444,6 +458,12 @@ function progressForRange(fromKey, toKey, includeOverdue) {
   return asProgress(pool);
 }
 function progressForDate(dateKey = todayKey()) { return progressForRange(dateKey, dateKey, false); }
+
+// Everything dated on or before `dateKey`, however far back — "how much of the
+// work due by my deadline is actually done".
+const EPOCH_KEY = '0000-01-01';
+const MILESTONE_MAX = 4;
+function progressUpTo(dateKey) { return progressForRange(EPOCH_KEY, dateKey, false); }
 
 // Kept as named wrappers so existing callers (the widget sections) keep reading
 // naturally; both are now date-scoped rather than category-scoped.

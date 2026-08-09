@@ -14,6 +14,17 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
   excluded from progress. The task dialog now opens with the date blank and
   offers **Clear** to remove one.
 
+- **An up-to-date indicator.** A single pill above the bars: green and "Up to
+  date" when nothing is past its deliver-by date, red with the count and weight
+  when something is. Undated work is a someday pile and never counts against it.
+- **Milestone bars.** Up to four, each showing how much of everything due by a
+  chosen date is complete — an exam, a hand-in, the end of term. Added in
+  Settings, shown above the weekly bar.
+- **A pond theme**, joining Light and Dark. Still water and lily pads: cool pale
+  surfaces, green-black text, pad green for the week bar and deep water teal for
+  today, with soft gradients on the raised surfaces. The theme is now a Settings
+  dropdown, and the sidebar button cycles through all three.
+
 ### Changed
 
 - **The main progress bar is now the week, and it carries the overdue backlog.**
@@ -68,6 +79,14 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - Calendar export skips undated tasks rather than failing on them.
 - Ticking an overdue task no longer makes it disappear on the spot; it stays
   until rollover, like anything else completed today.
+- **The bars column and category headings are legible in every theme.** A sweep
+  of 168 elements across all three found 17 pieces of text and 14 indicators
+  below the minimum — the weekly percentage was 1.24:1, category dots as low as
+  1.06:1, and the section labels, counts and meta lines all sat around 2.8:1.
+  They now read from themed text tokens rather than from fill colours, and the
+  lowest measurement across all three themes is 4.59:1.
+- The bars column stacked the indicator and milestones beside the bars instead of
+  above them; it's a proper column now.
 - Category colours are legible on a light background. Neon, amber, teal and grey
   were between 2.1:1 and 2.8:1 as a card edge or checkbox outline, under the 3:1
   minimum for a non-text indicator; light mode now uses darkened variants while

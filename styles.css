@@ -33,6 +33,9 @@
   --danger-text: #b02a1e;
   --danger-tint: rgba(224, 88, 75, .13);
   --danger-line: rgba(224, 88, 75, .45);
+  --ok-text: #0b7a44;
+  --ok-tint: rgba(43, 255, 136, .14);
+  --ok-line: rgba(16, 185, 129, .45);
 }
 
 body.dark {
@@ -59,7 +62,67 @@ body.dark {
   --danger-text: #ff9c92;
   --danger-tint: rgba(224, 88, 75, .20);
   --danger-line: rgba(255, 156, 146, .40);
+  --ok-text: #4ade80;
+  --ok-tint: rgba(43, 255, 136, .18);
+  --ok-line: rgba(74, 222, 128, .40);
 }
+
+/* ===================== POND THEME =====================
+   Still water, lily pads and wet stone. A light-family theme, so it inherits the
+   light defaults above and only overrides what should feel damp: cooler
+   surfaces, green-black text, pad green for the week bar and deep water teal for
+   today. "Moisture" comes from soft surface gradients and diffuse shadows rather
+   than from anything shiny. */
+body.pond {
+  --bg: #eef5f5;
+  --bg-elev: #f8fbfa;
+  --bg-sidebar: #e2eeed;
+  --text: #17352f;
+  --text-soft: #3f6159;
+  --text-faint: #6b8a82;
+  --border: #d5e6e3;
+  --border-strong: #bad5d0;
+  --hover: #dfecea;
+  --track: #d3e5e1;
+  --modal-backdrop: rgba(18, 44, 39, 0.38);
+
+  --purple: #2f6b5f;                 /* deep water — today */
+  --purple-glow: rgba(47, 107, 95, 0.45);
+  --neon: #5f9e46;                   /* lily pad — the week */
+  --neon-glow: rgba(95, 158, 70, 0.45);
+
+  --shadow: 0 1px 3px rgba(22, 58, 51, 0.09), 0 6px 20px rgba(22, 58, 51, 0.08);
+
+  --chip-bg: #dcebe7;
+  --chip-text: #2f5049;
+  --accent-text: #1c5a4e;
+  --accent-tint: rgba(47, 107, 95, .14);
+  --accent-line: rgba(47, 107, 95, .40);
+  --accent-solid: #2a6155;
+  --accent-solid-text: #f4fbf9;
+  --danger-text: #9d3423;
+  --danger-tint: rgba(179, 74, 52, .13);
+  --danger-line: rgba(157, 52, 35, .42);
+  --ok-text: #2d6b2a;
+  --ok-tint: rgba(95, 158, 70, .16);
+  --ok-line: rgba(95, 158, 70, .45);
+}
+/* Damp surfaces: a faint vertical wash, like light through shallow water. */
+body.pond .cat-box,
+body.pond .create-card,
+body.pond .milestone,
+body.pond .tm-section {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, .55), rgba(210, 233, 228, .30));
+}
+body.pond .weekly-bar-wrap,
+body.pond .sidebar {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, .35), rgba(198, 224, 219, .35));
+}
+/* Lily-pad category colours: pad green and pond-adjacent hues stay legible on a
+   pale water background, so only the ones that wash out get adjusted. */
+body.pond .tint-neon  { --c: #4f8a3a; }
+body.pond .tint-teal  { --c: #0f6f63; }
+body.pond .tint-gray  { --c: #5f7d76; }
 
 * { box-sizing: border-box; }
 
@@ -88,7 +151,7 @@ html, body {
   display: flex; align-items: center; gap: 8px;
   font-size: 13px; font-weight: 600; color: var(--text-soft); white-space: nowrap;
 }
-.weekly-pct { color: var(--neon); font-variant-numeric: tabular-nums; }
+.weekly-pct { color: var(--ok-text); font-variant-numeric: tabular-nums; }
 .weekly-bar-track {
   position: relative; flex: 1; height: 10px;
   background: var(--track); border-radius: 999px; overflow: hidden;
@@ -283,8 +346,8 @@ body.dark .checkbox.weekly.checked::after { color: #08130c; }
 .subgroup-empty { font-size: 12px; padding: 4px 10px 6px; font-style: italic; }
 
 .task-subgroup {
-  font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
-  color: var(--text-faint); font-weight: 600;
+  font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--chip-text); font-weight: 600;
   padding: 10px 10px 3px; user-select: none;
 }
 .task-subgroup:first-child { padding-top: 2px; }
@@ -292,13 +355,73 @@ body.dark .checkbox.weekly.checked::after { color: #08130c; }
 .add-mini.active { background: var(--purple); color: #fff; }
 .add-mini.active:hover { background: var(--purple); color: #fff; }
 
+/* ===================== UP-TO-DATE INDICATOR ===================== */
+/* Answers "am I behind?" before any percentage does. */
+.clear-indicator {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; border-radius: 999px;
+  border: 1px solid var(--ok-line); background: var(--ok-tint);
+  color: var(--ok-text); font-size: 13px; font-weight: 600;
+  white-space: nowrap; align-self: center;
+}
+.clear-indicator.behind {
+  border-color: var(--danger-line); background: var(--danger-tint); color: var(--danger-text);
+}
+.clear-icon {
+  width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--ok-text); color: var(--bg); font-size: 12px; font-weight: 700;
+}
+.clear-indicator.behind .clear-icon { background: var(--danger-text); }
+
+/* ===================== MILESTONE BARS ===================== */
+.milestone-bars { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+.milestone {
+  border: 1px solid var(--border); border-radius: 9px;
+  background: var(--bg-elev); padding: 8px 10px 9px;
+}
+.milestone.past { opacity: .68; }
+.milestone-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.milestone-name {
+  font-size: 12.5px; font-weight: 600; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.milestone-pct {
+  font-size: 12.5px; font-weight: 700; color: var(--accent-text);
+  font-variant-numeric: tabular-nums; flex-shrink: 0;
+}
+.milestone-track {
+  height: 7px; border-radius: 999px; background: var(--track);
+  overflow: hidden; margin: 6px 0 5px;
+}
+.milestone-fill {
+  height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent-solid), var(--purple));
+  transition: width .45s cubic-bezier(.22,1,.36,1);
+}
+.milestone-sub {
+  font-size: 11px; color: var(--chip-text); font-variant-numeric: tabular-nums;
+}
+
+.milestone-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.milestone-row { border-left-width: 1px !important; }
+.milestone-add { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.milestone-add .text-input { flex: 1 1 150px; }
+.milestone-date { flex: 0 0 auto !important; width: 165px; }
+
 /* ===================== VERTICAL BARS (RIGHT THIRD) ===================== */
+/* The column stacks: indicator, then any milestones, then the vertical bars.
+   It was a single centred row, which pushed the indicator and milestones to sit
+   beside the bars instead of above them. */
 .bars-col {
   flex: 0 0 33%;
   border-left: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: center;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 16px;
   padding: 20px;
+  overflow-y: auto;
 }
+.bars-col > .milestone-bars { max-width: 240px; }
 /* weekly stacked on top of daily, same thickness */
 .bars-stack {
   display: flex; flex-direction: column; align-items: center; gap: 18px;
@@ -353,13 +476,16 @@ body.dark .vtick { background: #000; opacity: .35; }
 
 .vbar-readout { display: flex; flex-direction: column; align-items: center; gap: 1px; }
 .vpct { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
-.vpct.purple { color: var(--purple); }
-.vpct.neon { color: var(--neon); }
+/* The bar hues are fills, not text — as readouts they measured 4.2:1 and 1.3:1.
+   These use the themed text variants of the same two colours instead. */
+.vpct.purple { color: var(--accent-text); }
+.vpct.neon { color: var(--ok-text); }
 .vlabel {
   display: flex; align-items: center; gap: 6px;
-  font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--text-faint);
+  font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--chip-text);
 }
-.daily-meta { font-size: 11px; color: var(--text-faint); }
+.daily-meta { font-size: 11.5px; color: var(--chip-text); }
+.week-range { font-size: 11.5px; color: var(--chip-text); font-variant-numeric: tabular-nums; }
 
 /* ===================== ARCHIVES PAGE ===================== */
 .page-archives { padding: 26px 36px; overflow-y: auto; }
@@ -538,17 +664,17 @@ body.dark .cal-pill.weekly { color: var(--neon); }
 }
 .cat-box .cat-dot { font-size: 11px; }
 .cat-count {
-  font-size: 12px; font-weight: 600; color: var(--text-soft);
+  font-size: 12px; font-weight: 600; color: var(--chip-text);
   margin-left: 8px; letter-spacing: 0;
 }
-.cat-dot { font-size: 9px; }
-.cat-dot.neon { color: var(--neon); }
-.cat-dot.purple { color: var(--purple); }
-.cat-dot.gray { color: var(--text-faint); }
-.cat-dot.blue { color: #3b82f6; }
-.cat-dot.amber { color: #f59e0b; }
-.cat-dot.pink { color: #ec4899; }
-.cat-dot.teal { color: #14b8a6; }
+/* The dot inherits --c from the box's tint-* class, so it's already the
+   per-theme, contrast-checked value rather than the raw palette hue — the raw
+   hues measured as low as 1.06:1 here. */
+.cat-dot { font-size: 11px; color: var(--c, var(--text-soft)); }
+/* The dot sits on the header's own colour wash, which lifts the background
+   toward the dot and costs it roughly a point of contrast. Deepen it in the
+   light-family themes; dark mode already clears 3:1 comfortably. */
+body:not(.dark) .cat-dot { color: color-mix(in srgb, var(--c, var(--text-soft)) 72%, #0a1a17); }
 
 .checkbox.neon.checked { background: var(--neon); border-color: var(--neon); box-shadow: 0 0 10px var(--neon-glow); }
 .checkbox.purple.checked { background: var(--purple); border-color: var(--purple); box-shadow: 0 0 10px var(--purple-glow); }
@@ -609,8 +735,8 @@ body.dark .checkbox.neon.checked::after { color: #08130c; }
   padding: 6px 8px 8px; margin-bottom: 6px;
 }
 .due-today-head {
-  font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em;
-  font-weight: 700; color: var(--purple); padding: 2px 4px 5px;
+  font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+  font-weight: 700; color: var(--accent-text); padding: 2px 4px 5px;
 }
 /* Carried-forward misses, called out in the danger colour rather than the accent
    so overdue never reads as just another "due soon" group. */
@@ -642,9 +768,9 @@ body.dark .checkbox.neon.checked::after { color: #08130c; }
    as "not scheduled" rather than as another deadline. */
 .due-badge.undated {
   background: none; border-style: dashed; border-color: var(--border-strong);
-  color: var(--text-soft); font-weight: 600;
+  color: var(--chip-text); font-weight: 600;
 }
-.tm-due.undated { color: var(--text-soft); font-weight: 600; font-style: italic; }
+.tm-due.undated { color: var(--chip-text); font-weight: 600; font-style: italic; }
 
 .field-optional {
   font-weight: 400; text-transform: none; letter-spacing: 0;

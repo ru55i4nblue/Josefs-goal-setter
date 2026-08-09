@@ -239,6 +239,15 @@ function renderSettings() {
   $('#setShowImport').checked = !!state.settings.showImport;
   $('#setShowWeightNotes').checked = !!state.settings.showWeightNotes;
 
+  const th = $('#setTheme');
+  th.innerHTML = '';
+  THEMES.forEach(([id, label]) => {
+    const o = document.createElement('option');
+    o.value = id; o.textContent = `${THEME_ICONS[id]}  ${label}`;
+    th.appendChild(o);
+  });
+  th.value = themeId(state.theme);
+
   const sel = $('#setDateFormat');
   sel.innerHTML = '';
   DATE_FORMATS.forEach((f) => {
@@ -267,8 +276,59 @@ function renderSettings() {
   ws.value = String(weekStartDay());
   updateWeekStartHint();
 
+  renderMilestoneSettings();
   updateDatePreview();
   renderWidgetSettings();
+}
+
+function renderMilestoneSettings() {
+  const host = $('#milestoneList');
+  host.innerHTML = '';
+  const list = state.settings.milestones || [];
+  if (!list.length) {
+    const hint = el('div', 'empty-hint');
+    hint.textContent = 'No milestones yet.';
+    host.appendChild(hint);
+  }
+  list.forEach((m) => {
+    const row = el('div', 'cat-row milestone-row');
+
+    const name = el('input', 'rec-title');
+    name.value = m.name;
+    name.title = 'Rename';
+    name.onchange = () => {
+      const v = name.value.trim();
+      if (v) { m.name = v.slice(0, 40); save(); render(); } else name.value = m.name;
+    };
+    row.appendChild(name);
+
+    const date = el('input', 'text-input milestone-date');
+    date.type = 'date'; date.value = m.date;
+    date.onchange = () => {
+      if (!date.value) { date.value = m.date; return; }
+      m.date = date.value; save(); render(); renderMilestoneSettings();
+    };
+    row.appendChild(date);
+
+    const del = el('button', 'rec-del');
+    del.textContent = '✕';
+    del.title = 'Remove milestone';
+    del.onclick = () => {
+      const at = state.settings.milestones.indexOf(m);
+      state.settings.milestones.splice(at, 1);
+      save(); render(); renderMilestoneSettings();
+      toast(`Removed “${m.name}”`, 'Undo', () => {
+        state.settings.milestones.splice(at, 0, m);
+        save(); render(); renderMilestoneSettings();
+      });
+    };
+    row.appendChild(del);
+    host.appendChild(row);
+  });
+
+  const full = list.length >= MILESTONE_MAX;
+  $('#milestoneAdd').disabled = full;
+  $('#milestoneAdd').title = full ? `Up to ${MILESTONE_MAX} milestones` : 'Add milestone';
 }
 
 // Spell the current week out, since "starts on Wednesday" is hard to picture.
@@ -899,7 +959,12 @@ function wire() {
   $('#sidebarBackdrop').onclick = () => document.body.classList.remove('sidebar-open');
 
   $('#themeToggle').onclick = () => {
-    state.theme = state.theme === 'dark' ? 'light' : 'dark';
+    const i = THEMES.findIndex(([id]) => id === themeId(state.theme));
+    state.theme = THEMES[(i + 1) % THEMES.length][0];
+    save(); applyTheme(); pushWidget();
+  };
+  $('#setTheme').onchange = (e) => {
+    state.theme = themeId(e.target.value);
     save(); applyTheme(); pushWidget();
   };
 
@@ -1018,6 +1083,18 @@ function wire() {
   };
   $('#setDateFormat').onchange = (e) => { state.settings.dateFormat = e.target.value; applyDateSetting(); };
   $('#setDueDisplay').onchange = (e) => { state.settings.dueDisplay = e.target.value; applyDateSetting(); };
+  $('#milestoneAdd').onclick = () => {
+    const name = $('#milestoneName').value.trim();
+    const date = $('#milestoneDate').value;
+    if (!date) { toast('Pick a date for the milestone'); return; }
+    if ((state.settings.milestones || []).length >= MILESTONE_MAX) return;
+    state.settings.milestones.push({ id: uid(), name: (name || 'Milestone').slice(0, 40), date });
+    state.settings.milestones.sort((a, b) => a.date.localeCompare(b.date));
+    $('#milestoneName').value = ''; $('#milestoneDate').value = '';
+    save(); render(); renderMilestoneSettings();
+    toast(`Milestone “${name || 'Milestone'}” added`);
+  };
+
   $('#setWeekStart').onchange = (e) => {
     state.settings.weekStart = Number(e.target.value);
     // Moving the boundary changes what weekKey() returns, which would otherwise

@@ -81,6 +81,7 @@ function buildSection(sec) {
 
 function applyData(d) {
   document.body.classList.toggle('dark', d.theme === 'dark');
+  document.body.classList.toggle('pond', d.theme === 'pond');
   const host = $('#sections');
   host.innerHTML = '';
   (d.sections || []).forEach((sec) => host.appendChild(buildSection(sec)));

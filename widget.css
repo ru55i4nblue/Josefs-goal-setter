@@ -27,6 +27,25 @@ body.dark {
   --accent-tint: rgba(139, 92, 246, .22);
   --danger-text: #ff9c92;
 }
+/* Pond: a light-family theme, so it only overrides the damp surfaces and hues. */
+body.pond {
+  --bg: #f4faf8;
+  --text: #17352f;
+  --text-soft: #3f6159;
+  --text-faint: #6b8a82;
+  --border: #d5e6e3;
+  --track: #d3e5e1;
+  --purple: #2f6b5f;
+  --neon: #5f9e46;
+
+  --chip-text: #2f5049;
+  --accent-text: #1c5a4e;
+  --accent-tint: rgba(47, 107, 95, .14);
+  --danger-text: #9d3423;
+}
+body.pond .dot.neon { background: #4f8a3a; }
+body.pond .dot.teal { background: #0f6f63; }
+body.pond .dot.gray { background: #5f7d76; }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { background: transparent; overflow: hidden; user-select: none; }
@@ -66,7 +85,7 @@ body {
 .sec-head {
   display: flex; align-items: center; gap: 6px;
   font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em;
-  color: var(--text-faint); font-weight: 700; margin-bottom: 6px;
+  color: var(--chip-text); font-weight: 700; margin-bottom: 6px;
 }
 .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 /* On white the vivid palette all but vanishes — neon measured 1.33:1, well under

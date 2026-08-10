@@ -47,6 +47,29 @@ body.pond .dot.neon { background: #4f8a3a; }
 body.pond .dot.teal { background: #0f6f63; }
 body.pond .dot.gray { background: #5f7d76; }
 
+/* Outer space: carries `dark` too, so this only takes it to true black.
+   Must follow body.dark — equal specificity, so source order decides. */
+body.space {
+  --bg: #08080b;                 /* the card sits on a transparent page, so not
+                                    pure black or it loses its edge entirely */
+  --text: #eef0f6;
+  --text-soft: #a8adbd;
+  --text-faint: #6e7488;
+  --border: #22232c;
+  --track: #17181f;
+  --purple: #a78bfa;
+  --neon: #67e8f9;
+
+  --chip-text: #c3c8d8;
+  --accent-text: #c4b5fd;
+  --accent-tint: rgba(167, 139, 250, .18);
+  --danger-text: #ff9c92;
+}
+body.space .card { box-shadow: 0 0 0 1px rgba(255,255,255,.05), 0 8px 26px rgba(0,0,0,.9); }
+body.space .dot.neon { background: #67e8f9; box-shadow: 0 0 6px rgba(103,232,249,.5); }
+body.space .box.done.neon { background: #67e8f9; border-color: #67e8f9; }
+body.space .box.done.neon::after { color: #04141a; }
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { background: transparent; overflow: hidden; user-select: none; }
 body {

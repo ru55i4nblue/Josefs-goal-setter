@@ -16,6 +16,10 @@
   --purple-glow: rgba(139, 92, 246, 0.55);
   --neon: #2bff88;
   --neon-glow: rgba(43, 255, 136, 0.55);
+  /* deep end of each progress-bar gradient; themed so a bar isn't stuck with
+     a hue the rest of the palette has moved away from */
+  --neon-deep: #16c46a;
+  --purple-deep: #7c3aed;
 
   --shadow: 0 1px 3px rgba(15, 15, 15, 0.08), 0 4px 16px rgba(15, 15, 15, 0.06);
   --radius: 8px;
@@ -90,6 +94,8 @@ body.pond {
   --purple-glow: rgba(47, 107, 95, 0.45);
   --neon: #5f9e46;                   /* lily pad — the week */
   --neon-glow: rgba(95, 158, 70, 0.45);
+  --neon-deep: #3f7a2e;
+  --purple-deep: #1c5a4e;
 
   --shadow: 0 1px 3px rgba(22, 58, 51, 0.09), 0 6px 20px rgba(22, 58, 51, 0.08);
 
@@ -153,6 +159,88 @@ body.pond .tint-neon  { --c: #4f8a3a; }
 body.pond .tint-teal  { --c: #0f6f63; }
 body.pond .tint-gray  { --c: #5f7d76; }
 
+/* ===================== OUTER SPACE THEME =====================
+   Jet black, an ultra-dark mode. It carries `dark` as well, so every body.dark
+   rule already applies — this only takes the surfaces down to true black and
+   swaps the accents for starlight. Placed after body.dark deliberately: the two
+   selectors have equal specificity, so source order decides. */
+body.space {
+  --bg: #000000;
+  --bg-elev: #0a0a0d;
+  --bg-sidebar: #050507;
+  --text: #eef0f6;
+  --text-soft: #a8adbd;
+  --text-faint: #6e7488;
+  --border: #1a1b23;
+  --border-strong: #2c2e39;
+  --hover: #14151c;
+  --track: #17181f;
+  --modal-backdrop: rgba(0, 0, 0, 0.8);
+
+  --purple: #a78bfa;                 /* nebula violet — today */
+  --purple-glow: rgba(167, 139, 250, 0.6);
+  --neon: #67e8f9;                   /* starlight cyan — the week */
+  --neon-glow: rgba(103, 232, 249, 0.55);
+  --neon-deep: #0e7490;
+  --purple-deep: #6d28d9;
+
+  /* a shadow is invisible on black, so surfaces are edged with a faint ring */
+  --shadow: 0 0 0 1px rgba(255, 255, 255, .045), 0 10px 30px rgba(0, 0, 0, .9);
+
+  --chip-bg: #16171f;
+  --chip-text: #c3c8d8;
+  --accent-text: #c4b5fd;
+  --accent-tint: rgba(167, 139, 250, .18);
+  --accent-line: rgba(167, 139, 250, .42);
+  --accent-solid: #a78bfa;
+  --accent-solid-text: #0b0713;
+  --danger-text: #ff9c92;
+  --danger-tint: rgba(224, 88, 75, .20);
+  --danger-line: rgba(255, 156, 146, .40);
+  --ok-text: #5eead4;
+  --ok-tint: rgba(94, 234, 212, .15);
+  --ok-line: rgba(94, 234, 212, .40);
+}
+/* On true black a solid panel reads as a floating slab, so surfaces get the
+   faintest lift and a hairline instead. */
+body.space .cat-box,
+body.space .create-card,
+body.space .milestone,
+body.space .tm-section {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, .035), rgba(255, 255, 255, .012));
+}
+body.space .checkbox { background: #05050a; }
+
+/* Four-pointed sparkles scattered across the void. Inline SVG so nothing is
+   fetched, fixed behind the app, and never clickable. */
+body.space::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-repeat: no-repeat;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150' viewBox='0 0 100 100'%3E%3Cpath d='M50 2c2.6 30 15.4 45.4 46 48-30.6 2.6-43.4 18-46 48-2.6-30-15.4-45.4-46-48 30.6-2.6 43.4-18 46-48z' fill='%23ffffff' opacity='.5'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 100 100'%3E%3Cpath d='M50 2c2.6 30 15.4 45.4 46 48-30.6 2.6-43.4 18-46 48-2.6-30-15.4-45.4-46-48 30.6-2.6 43.4-18 46-48z' fill='%23c4b5fd' opacity='.42'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='62' height='62' viewBox='0 0 100 100'%3E%3Cpath d='M50 2c2.6 30 15.4 45.4 46 48-30.6 2.6-43.4 18-46 48-2.6-30-15.4-45.4-46-48 30.6-2.6 43.4-18 46-48z' fill='%2367e8f9' opacity='.4'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 100 100'%3E%3Cpath d='M50 2c2.6 30 15.4 45.4 46 48-30.6 2.6-43.4 18-46 48-2.6-30-15.4-45.4-46-48 30.6-2.6 43.4-18 46-48z' fill='%23ffffff' opacity='.34'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30' viewBox='0 0 100 100'%3E%3Cpath d='M50 2c2.6 30 15.4 45.4 46 48-30.6 2.6-43.4 18-46 48-2.6-30-15.4-45.4-46-48 30.6-2.6 43.4-18 46-48z' fill='%23ffffff' opacity='.3'/%3E%3C/svg%3E"),
+    /* distant dust */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='340' viewBox='0 0 420 340'%3E%3Cg fill='%23ffffff'%3E%3Ccircle cx='30' cy='60' r='1.3' opacity='.5'/%3E%3Ccircle cx='120' cy='24' r='1' opacity='.36'/%3E%3Ccircle cx='210' cy='96' r='1.4' opacity='.44'/%3E%3Ccircle cx='300' cy='42' r='1' opacity='.32'/%3E%3Ccircle cx='384' cy='120' r='1.3' opacity='.42'/%3E%3Ccircle cx='66' cy='180' r='1.1' opacity='.34'/%3E%3Ccircle cx='168' cy='228' r='1.4' opacity='.46'/%3E%3Ccircle cx='258' cy='186' r='1' opacity='.3'/%3E%3Ccircle cx='348' cy='264' r='1.2' opacity='.4'/%3E%3Ccircle cx='96' cy='312' r='1.3' opacity='.38'/%3E%3Ccircle cx='222' cy='300' r='1' opacity='.3'/%3E%3Ccircle cx='402' cy='210' r='1.1' opacity='.36'/%3E%3C/g%3E%3C/svg%3E");
+  background-position:
+    7% 14%, 91% 22%, 22% 78%, 78% 88%, 52% 8%, 0 0;
+  background-size: auto, auto, auto, auto, auto, 420px 340px;
+}
+/* the dust tiles; the sparkles don't */
+body.space::before { background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, repeat; }
+body.space .app-body, body.space .weekly-bar-wrap { position: relative; z-index: 1; }
+
+@media (prefers-reduced-motion: no-preference) {
+  body.space::before { animation: twinkle 7s ease-in-out infinite; }
+  @keyframes twinkle {
+    0%, 100% { opacity: .85; }
+    50%      { opacity: 1; }
+  }
+}
+
 * { box-sizing: border-box; }
 
 html, body {
@@ -188,7 +276,7 @@ html, body {
 .weekly-bar-fill {
   position: absolute; left: 0; top: 0; bottom: 0; width: 0%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #16c46a, var(--neon));
+  background: linear-gradient(90deg, var(--neon-deep), var(--neon));
   box-shadow: 0 0 14px var(--neon-glow);
   transition: width .9s cubic-bezier(.22,1,.36,1);
 }
@@ -223,7 +311,7 @@ html, body {
 .nav-item {
   display: flex; align-items: center; gap: 9px;
   background: none; border: none; cursor: pointer;
-  font-size: 14px; color: var(--text-soft);
+  font-size: 14px; color: var(--chip-text);
   padding: 7px 10px; border-radius: 6px; text-align: left;
   font-family: inherit;
 }
@@ -233,7 +321,7 @@ html, body {
 .sidebar-spacer { flex: 1; }
 .sidebar-btn {
   background: none; border: none; cursor: pointer;
-  font-size: 13px; color: var(--text-soft);
+  font-size: 13px; color: var(--chip-text);
   padding: 7px 10px; border-radius: 6px; text-align: left;
   font-family: inherit; margin-top: 2px;
 }
@@ -474,11 +562,11 @@ body.dark .checkbox.weekly.checked::after { color: #08130c; }
   transition: height .85s cubic-bezier(.34,1.56,.64,1);
 }
 .vbar-fill.weekly {
-  background: linear-gradient(0deg, #16c46a, var(--neon));
+  background: linear-gradient(0deg, var(--neon-deep), var(--neon));
   box-shadow: 0 0 16px var(--neon-glow);
 }
 .vbar-fill.daily {
-  background: linear-gradient(0deg, #7c3aed, var(--purple), #a78bfa);
+  background: linear-gradient(0deg, var(--purple-deep), var(--purple));
   box-shadow: 0 0 18px var(--purple-glow);
 }
 .vbar-fill.bump { animation: bump .55s ease; }

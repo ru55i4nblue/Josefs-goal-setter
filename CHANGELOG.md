@@ -7,7 +7,19 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- **An Outer space theme** — jet black, as an ultra-dark mode, with four-pointed
+  sparkles and a drift of distant dust behind the app. Nebula violet marks today,
+  starlight cyan the week. Surfaces are lifted by a hairline and the faintest
+  gradient rather than a shadow, which is invisible on black.
+
+### Fixed
+
+- Sidebar navigation and buttons measured 4.32:1 in light mode, just under the
+  minimum. They read from the chip token now, like the rest of the secondary text.
+- The progress bars hard-coded the deep end of their gradient, so a bar kept a
+  green or violet the rest of a theme had moved away from. Both ends are themed.
 
 ## [2.6.0] — 2026-08-09
 

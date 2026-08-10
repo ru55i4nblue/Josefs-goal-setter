@@ -859,8 +859,9 @@ function applyTheme() {
   const t = themeId(state.theme);
   // Themes are mutually exclusive classes rather than one boolean, so a third
   // one could be added without touching every existing `body.dark` rule.
-  document.body.classList.toggle('dark', t === 'dark');
+  document.body.classList.toggle('dark', DARK_FAMILY.includes(t));
   document.body.classList.toggle('pond', t === 'pond');
+  document.body.classList.toggle('space', t === 'space');
   document.body.dataset.theme = t;
   const btn = $('#themeToggle');
   if (btn) {

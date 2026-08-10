@@ -80,8 +80,10 @@ function buildSection(sec) {
 }
 
 function applyData(d) {
-  document.body.classList.toggle('dark', d.theme === 'dark');
+  // space is a dark-family theme — it wears `dark` too, then overrides
+  document.body.classList.toggle('dark', d.theme === 'dark' || d.theme === 'space');
   document.body.classList.toggle('pond', d.theme === 'pond');
+  document.body.classList.toggle('space', d.theme === 'space');
   const host = $('#sections');
   host.innerHTML = '';
   (d.sections || []).forEach((sec) => host.appendChild(buildSection(sec)));

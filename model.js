@@ -121,8 +121,11 @@ function dueLabel(key) {
   return `${prettyDate(key)} · ${relativeDue(key)}`;
 }
 /* ---------- themes ---------- */
-const THEMES = [['light', 'Light'], ['dark', 'Dark'], ['pond', 'Pond']];
-const THEME_ICONS = { light: '☀️', dark: '🌙', pond: '🪷' };
+const THEMES = [['light', 'Light'], ['dark', 'Dark'], ['pond', 'Pond'], ['space', 'Outer space']];
+const THEME_ICONS = { light: '☀️', dark: '🌙', pond: '🪷', space: '✦' };
+// Themes in the dark family wear `dark` as well as their own class, so every
+// existing body.dark rule applies and they only override what differs.
+const DARK_FAMILY = ['dark', 'space'];
 const themeId = (t) => (THEMES.some(([id]) => id === t) ? t : 'light');
 const themeLabel = (t) => (THEMES.find(([id]) => id === themeId(t)) || THEMES[0])[1];
 

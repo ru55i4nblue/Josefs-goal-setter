@@ -137,6 +137,7 @@ function afterChange() {
   if (currentPage === 'calendar') renderCalendar();
   if (currentPage === 'create') renderCatManager();
   if (currentPage === 'archives') renderArchive();
+  if (currentPage === 'bigpicture') renderBigPicture();
 }
 
 function toggleTask(id) {
@@ -185,6 +186,59 @@ function restoreDeleted(id) {
   toast(`Restored “${task.title}”`);
 }
 
+/* ---------- big picture projects ---------- */
+function addProject(opts) {
+  const name = (opts.name || '').trim();
+  if (!name) return null;
+  const cat = getCat(opts.categoryId) || getCat(defaultCatId());
+  if (!cat) return null;
+  const p = {
+    id: 'p_' + uid(),
+    name: name.slice(0, 60),
+    categoryId: cat.id,
+    deliverBy: opts.deliverBy || null,
+    note: opts.note || '',
+    order: Date.now()
+  };
+  state.projects.push(p);
+  afterChange();
+  return p;
+}
+
+function updateProject(id, patch) {
+  const p = getProject(id);
+  if (!p) return;
+  const name = (patch.name || '').trim();
+  if (name) p.name = name.slice(0, 60);
+  if (patch.deliverBy !== undefined) p.deliverBy = patch.deliverBy || null;
+  if (typeof patch.note === 'string') p.note = patch.note;
+  if (patch.categoryId && getCat(patch.categoryId)) {
+    p.categoryId = patch.categoryId;
+    // sub-tasks follow their project, so the two can never disagree
+    subtasksOf(p.id).forEach((t) => { t.categoryId = p.categoryId; });
+  }
+  afterChange();
+}
+
+// Deleting a project takes its sub-tasks with it — they have no meaning on
+// their own — but both come back together on Undo.
+function deleteProject(id) {
+  const p = getProject(id);
+  if (!p) return;
+  const at = state.projects.indexOf(p);
+  const subs = subtasksOf(id);
+  state.projects = state.projects.filter((x) => x.id !== id);
+  state.tasks = state.tasks.filter((t) => t.parentId !== id);
+  if (expandedProjectId === id) expandedProjectId = null;
+  afterChange();
+  toast(`Deleted “${p.name}”${subs.length ? ` · ${subs.length} sub-task${subs.length === 1 ? '' : 's'}` : ''}`,
+    'Undo', () => {
+      state.projects.splice(at, 0, p);
+      subs.forEach((t) => state.tasks.push(t));
+      afterChange();
+    });
+}
+
 function addTask(opts) {
   const title = (opts.title || '').trim();
   if (!title) return null;
@@ -199,6 +253,8 @@ function addTask(opts) {
     recurring,
     cadence: recurring ? (opts.cadence || (cat.type === 'weekly' ? 'weekly' : 'daily')) : null,
     days: recurring ? (opts.days || []) : [],
+    // a sub-task when it names a project it belongs to
+    parentId: (opts.parentId && getProject(opts.parentId)) ? opts.parentId : null,
     // optional, and never set for routine — a chore recurs, it isn't due
     deliverBy: cat.type === 'routine' ? null : (opts.deliverBy || null),
     done: false,
@@ -217,8 +273,13 @@ function updateTask(id, patch) {
   const title = (patch.title || '').trim();
   if (!title) return;
   // Routine membership is no longer fixed — a chore can graduate into a real
-  // category, and a task can be demoted to one.
-  if (patch.categoryId && getCat(patch.categoryId)) t.categoryId = patch.categoryId;
+  // category, and a task can be demoted to one. A sub-task is the exception: it
+  // sits in its project's category and moves only when the project does.
+  if (t.parentId && getProject(t.parentId)) {
+    t.categoryId = getProject(t.parentId).categoryId;
+  } else if (patch.categoryId && getCat(patch.categoryId)) {
+    t.categoryId = patch.categoryId;
+  }
   const nowRoutine = catType(t.categoryId) === 'routine';
   Object.assign(t, {
     title,
@@ -269,7 +330,9 @@ function renderTaskArea() {
 // completions so ticking one off doesn't make it vanish mid-glance.
 function catBoxTasks(cat) {
   const tk = todayKey();
-  return tasksOf(cat.id).filter((t) => {
+  // Sub-tasks belong to their project's card, not to the category list — the
+  // project is pinned at the top of the box and stands in for them.
+  return topLevelTasks(tasksOf(cat.id)).filter((t) => {
     if (cat.type === 'routine') return true;             // standing list, always shown
     if (t.recurring) return activeOn(t, tk) || dueDateOf(t) > tk;
     // A ticked task stays put until rollover clears it — including one that was
@@ -345,12 +408,18 @@ function categoryBox(cat) {
   head.appendChild(actions);
   box.appendChild(head);
 
+  /* ---- projects pinned above everything else ---- */
+  const projects = projectsOf(cat.id);
+  projects.forEach((p) => box.appendChild(pinnedProject(p)));
+
   /* ---- due today (highlighted) then upcoming ---- */
   let budget = limit;
   if (!all.length) {
-    const hint = el('div', 'empty-hint');
-    hint.textContent = `No ${cat.name.toLowerCase()} tasks — add one with ＋`;
-    box.appendChild(hint);
+    if (!projects.length) {
+      const hint = el('div', 'empty-hint');
+      hint.textContent = `No ${cat.name.toLowerCase()} tasks — add one with ＋`;
+      box.appendChild(hint);
+    }
   } else {
     // Overdue leads, in its own alarm-coloured callout — carried-forward misses
     // are the thing you most need to see when you open the app.
@@ -410,6 +479,32 @@ function categoryBox(cat) {
   }
 
   return box;
+}
+
+// A project as it appears pinned at the top of its category: name, progress,
+// and the two dates that matter — the next sub-task and the project's own.
+// Clicking it opens the Big Picture tab, same as clicking it there.
+function pinnedProject(p) {
+  const row = el('button', 'pinned-project');
+  row.type = 'button';
+  row.onclick = () => openProject(p.id);
+  row.title = 'Open in Big Picture';
+
+  const head = el('div', 'pp-head');
+  const name = el('span', 'pp-name');
+  name.textContent = p.name;
+  const { wrap, prog } = projectBar(p);
+  const pct = el('span', 'pp-pct');
+  pct.textContent = Math.round(prog.pct) + '%';
+  head.appendChild(name); head.appendChild(pct);
+  row.appendChild(head);
+  row.appendChild(wrap);
+
+  const subs = subtasksOf(p.id);
+  const meta = el('div', 'pp-meta');
+  meta.textContent = `${subs.filter((t) => t.done).length}/${subs.length}  ·  ${projectMetaLine(p)}`;
+  row.appendChild(meta);
+  return row;
 }
 
 function taskRow(t, container, dateKey, cat) {
@@ -506,6 +601,144 @@ function commitOrder(container, cat, dateKey) {
   else setDayOrder(ordered, dateKey);
   if (cat.sort === 'weight') cat.sort = 'manual';   // dragging implies manual order
   afterChange();
+}
+
+/* ============================================================
+   Big Picture — projects as cards, one expandable to fill the pane
+   ============================================================ */
+// transient: which project is open. Deliberately not saved — reopening the app
+// shouldn't drop you inside whatever you last looked at.
+let expandedProjectId = null;
+
+// Shared by the Big Picture cards and the pinned row in Taskmaster.
+function projectMetaLine(p) {
+  const next = projectNextDue(p), due = projectDue(p);
+  const bits = [];
+  bits.push(next ? `next ${shortDate(next)} · ${relativeDue(next)}` : 'nothing outstanding');
+  if (due) bits.push(`due ${shortDate(due)}`);
+  return bits.join('  ·  ');
+}
+
+function projectBar(p) {
+  const prog = projectProgress(p);
+  const wrap = el('div', 'proj-bar');
+  const track = el('div', 'milestone-track');
+  const fill = el('div', 'milestone-fill');
+  fill.style.width = prog.pct + '%';
+  track.appendChild(fill);
+  wrap.appendChild(track);
+  return { wrap, prog };
+}
+
+function renderBigPicture() {
+  const host = $('#bigPictureBody');
+  if (!host) return;
+  host.innerHTML = '';
+  const projects = (state.projects || []);
+
+  if (!projects.length) {
+    const hint = el('div', 'empty-hint');
+    hint.textContent = 'No projects yet. A project holds sub-tasks that each carry their own weight and deliver-by date.';
+    host.appendChild(hint);
+    return;
+  }
+
+  // expanded takes the whole pane; otherwise a grid of cards
+  if (expandedProjectId && getProject(expandedProjectId)) {
+    host.appendChild(projectDetail(getProject(expandedProjectId)));
+    return;
+  }
+
+  const grid = el('div', 'bp-grid');
+  projects.forEach((p) => grid.appendChild(projectCard(p)));
+  host.appendChild(grid);
+}
+
+function projectCard(p) {
+  const cat = getCat(p.categoryId) || { name: '—', color: 'gray' };
+  const card = el('button', `bp-card tint-${cat.color}`);
+  card.type = 'button';
+  card.onclick = () => { expandedProjectId = p.id; renderBigPicture(); };
+  card.title = 'Open project';
+
+  const head = el('div', 'bp-card-head');
+  const name = el('span', 'bp-card-name');
+  name.textContent = p.name;
+  const pct = el('span', 'bp-card-pct');
+  const { wrap, prog } = projectBar(p);
+  pct.textContent = Math.round(prog.pct) + '%';
+  head.appendChild(name); head.appendChild(pct);
+  card.appendChild(head);
+
+  const catLine = el('div', 'bp-card-cat');
+  catLine.innerHTML = `<span class="cat-dot">●</span> ${escapeHtml(cat.name)}`;
+  card.appendChild(catLine);
+
+  card.appendChild(wrap);
+
+  const meta = el('div', 'bp-card-meta');
+  const subs = subtasksOf(p.id);
+  meta.textContent = `${subs.filter((t) => t.done).length}/${subs.length} sub-tasks  ·  ${projectMetaLine(p)}`;
+  card.appendChild(meta);
+  return card;
+}
+
+function projectDetail(p) {
+  const cat = getCat(p.categoryId) || { name: '—', color: 'gray' };
+  const wrap = el('div', `bp-detail tint-${cat.color}`);
+
+  const bar = el('div', 'bp-detail-head');
+  const back = el('button', 'btn-ghost btn-small');
+  back.textContent = '← All projects';
+  back.onclick = () => { expandedProjectId = null; renderBigPicture(); };
+  bar.appendChild(back);
+
+  const actions = el('div', 'bp-detail-actions');
+  const edit = el('button', 'btn-ghost btn-small');
+  edit.textContent = '✎ Edit project';
+  edit.onclick = () => openProjectModal(p.id);
+  const add = el('button', 'btn-primary btn-small');
+  add.textContent = '＋ Sub-task';
+  add.onclick = () => openModal({ categoryId: p.categoryId, parentId: p.id });
+  actions.appendChild(edit); actions.appendChild(add);
+  bar.appendChild(actions);
+  wrap.appendChild(bar);
+
+  const title = el('h2', 'bp-detail-title');
+  title.textContent = p.name;
+  wrap.appendChild(title);
+
+  const sub = el('div', 'bp-detail-sub');
+  sub.innerHTML = `<span class="cat-dot">●</span> ${escapeHtml(cat.name)}  ·  ${escapeHtml(projectMetaLine(p))}`;
+  wrap.appendChild(sub);
+
+  const { wrap: barWrap, prog } = projectBar(p);
+  const pctRow = el('div', 'bp-detail-pct');
+  pctRow.textContent = prog.total
+    ? `${Math.round(prog.pct)}%  ·  ${prog.done}/${prog.total} weight`
+    : 'no weighted sub-tasks yet';
+  wrap.appendChild(pctRow);
+  wrap.appendChild(barWrap);
+
+  if (p.note) {
+    const note = el('div', 'bp-detail-note');
+    note.textContent = p.note;
+    wrap.appendChild(note);
+  }
+
+  const subs = subtasksOf(p.id);
+  if (!subs.length) {
+    const hint = el('div', 'empty-hint');
+    hint.textContent = 'No sub-tasks yet — add one with ＋ Sub-task.';
+    wrap.appendChild(hint);
+  } else {
+    // ordinary task rows, so weights, due badges and drag-ordering come along
+    const list = el('div', 'task-list bp-subtasks');
+    subs.forEach((t) => list.appendChild(taskRow(t, list, todayKey(), cat)));
+    makeSortable(list, cat, todayKey());
+    wrap.appendChild(list);
+  }
+  return wrap;
 }
 
 /* ============================================================
@@ -706,6 +939,7 @@ function pushWidget() {
    Task modal
    ============================================================ */
 let modalEditId = null, modalWeight = 1, modalDays = new Set(), modalCatId = 'daily';
+let modalParentId = null;   // non-null while the modal is editing a sub-task
 
 // Every category is a valid destination now, Routine included — moving into it
 // drops the task's date and weight, moving out lets it earn them back.
@@ -748,6 +982,7 @@ function openModal(opts = {}) {
   modalEditId = null;
   modalWeight = 1;
   modalDays = new Set();
+  modalParentId = opts.parentId || null;      // set when adding inside a project
   modalCatId = opts.categoryId || defaultCatId();
   $('#modalTitle').textContent = 'New task';
   $('#modalSave').textContent = 'Add task';
@@ -773,6 +1008,7 @@ function openEditModal(id) {
   modalEditId = id;
   modalWeight = t.weight;
   modalDays = new Set(t.days || []);
+  modalParentId = t.parentId || null;
   modalCatId = t.categoryId;
   $('#modalTitle').textContent = 'Edit task';
   $('#modalSave').textContent = 'Save changes';
@@ -808,11 +1044,50 @@ function saveModal() {
     recurring,
     cadence,
     days: cadence === 'daily' ? [...modalDays].sort() : [],
-    deliverBy: $('#taskDate').value || null      // blank means genuinely undated
+    deliverBy: $('#taskDate').value || null,     // blank means genuinely undated
+    parentId: modalParentId
   };
   if (modalEditId) updateTask(modalEditId, payload);
   else addTask(payload);
   closeModal();
+}
+
+/* ---------- project modal ---------- */
+let projectEditId = null;
+
+function openProjectModal(id) {
+  projectEditId = id || null;
+  const p = id ? getProject(id) : null;
+  $('#projectModalTitle').textContent = p ? 'Edit project' : 'New project';
+  $('#projectSave').textContent = p ? 'Save changes' : 'Add project';
+  $('#projectDelete').classList.toggle('hidden', !p);
+  $('#projectName').value = p ? p.name : '';
+  $('#projectNote').value = p ? (p.note || '') : '';
+  $('#projectDate').value = p ? (p.deliverBy || '') : '';
+  fillCategorySelect($('#projectCategory'), p ? p.categoryId : defaultCatId());
+  syncProjectModal();
+  $('#projectModal').classList.remove('hidden');
+  setTimeout(() => $('#projectName').focus(), 30);
+}
+function closeProjectModal() { $('#projectModal').classList.add('hidden'); }
+function syncProjectModal() {
+  $('#projectClearDate').classList.toggle('hidden', !$('#projectDate').value);
+}
+function saveProjectModal() {
+  const payload = {
+    name: $('#projectName').value,
+    categoryId: $('#projectCategory').value,
+    note: $('#projectNote').value.trim(),
+    deliverBy: $('#projectDate').value || null
+  };
+  if (!payload.name.trim()) { toast('Give the project a name first'); return; }
+  if (projectEditId) updateProject(projectEditId, payload);
+  else {
+    const p = addProject(payload);
+    if (p) expandedProjectId = p.id;
+  }
+  closeProjectModal();
+  if (currentPage === 'bigpicture') renderBigPicture();
 }
 
 /* ---------- shared line parser (quick add + import) ---------- */
@@ -887,7 +1162,7 @@ function setStartupLabel(on) {
 }
 
 let currentPage = 'taskmaster';
-const PAGES = ['taskmaster', 'create', 'calendar', 'archives', 'settings'];
+const PAGES = ['taskmaster', 'bigpicture', 'create', 'calendar', 'archives', 'settings'];
 function showPage(page) {
   currentPage = page;
   PAGES.forEach((p) => $('#page-' + p).classList.toggle('hidden', p !== page));
@@ -897,6 +1172,14 @@ function showPage(page) {
   if (page === 'taskmaster') renderTaskArea();
   if (page === 'create') { renderCatManager(); fillCategorySelect($('#cCategory'), defaultCatId()); }
   if (page === 'settings') renderSettings();
+  if (page === 'bigpicture') renderBigPicture();
+}
+
+// Opening a project from anywhere lands in the same place: the Big Picture tab
+// with that project expanded.
+function openProject(id) {
+  expandedProjectId = id;
+  showPage('bigpicture');
 }
 
 /* ============================================================

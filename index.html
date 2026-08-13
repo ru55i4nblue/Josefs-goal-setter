@@ -37,6 +37,9 @@
         <button class="nav-item active" data-page="taskmaster">
           <span class="nav-ico">◈</span> Taskmaster
         </button>
+        <button class="nav-item" data-page="bigpicture">
+          <span class="nav-ico">◎</span> Big Picture
+        </button>
         <button class="nav-item" data-page="create">
           <span class="nav-ico">＋</span> Create
         </button>
@@ -196,6 +199,15 @@
       <div id="calWeek" class="cal-week"></div>
     </main>
 
+    <!-- ===================== BIG PICTURE PAGE ===================== -->
+    <main id="page-bigpicture" class="page page-bigpicture hidden">
+      <div class="bp-header">
+        <h1 class="archive-title">Big Picture</h1>
+        <button id="bpNewBtn" class="btn-primary btn-small">＋ New project</button>
+      </div>
+      <div id="bigPictureBody" class="bp-body"></div>
+    </main>
+
     <!-- ===================== ARCHIVES PAGE ===================== -->
     <main id="page-archives" class="page page-archives hidden">
       <h1 class="archive-title">Archives</h1>
@@ -351,6 +363,40 @@
         <button id="modalDelete" class="btn-danger hidden">Delete</button>
         <button id="modalCancel" class="btn-ghost">Cancel</button>
         <button id="modalSave" class="btn-primary">Add task</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROJECT MODAL -->
+  <div id="projectModal" class="modal-overlay hidden">
+    <div class="modal">
+      <h3 id="projectModalTitle">New project</h3>
+      <p class="modal-hint">A project groups sub-tasks that each carry their own
+        weight and deliver-by date. It sits pinned at the top of its category.</p>
+
+      <label class="field-label">Project name</label>
+      <input id="projectName" class="text-input" type="text" maxlength="60"
+             placeholder="e.g. ENCH394 design report" />
+
+      <label class="field-label">Category</label>
+      <select id="projectCategory" class="text-input"></select>
+
+      <label class="field-label">What this is / why it matters</label>
+      <textarea id="projectNote" class="text-area note-area"
+        placeholder="Context for the project as a whole."></textarea>
+
+      <label class="field-label">Deliver by
+        <span class="field-optional">optional — defaults to the last sub-task</span></label>
+      <div class="date-field">
+        <input id="projectDate" class="text-input" type="date" />
+        <button id="projectClearDate" type="button" class="btn-ghost btn-small hidden"
+                title="Remove the project deadline">Clear</button>
+      </div>
+
+      <div class="modal-actions">
+        <button id="projectDelete" class="btn-danger hidden">Delete</button>
+        <button id="projectCancel" class="btn-ghost">Cancel</button>
+        <button id="projectSave" class="btn-primary">Add project</button>
       </div>
     </div>
   </div>

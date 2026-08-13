@@ -14,7 +14,8 @@ function weekArchiveLabel(week) {
 function renderGroupedView(body) {
   const tk = todayKey();
 
-  const rows = state.tasks
+  // sub-tasks stay inside their project rather than flooding this view
+  const rows = topLevelTasks()
     .filter((t) => !(t.done && !t.recurring))
     .map((t) => ({ t, due: dueDateOf(t) }))
     .filter(({ t, due }) => !(t.recurring && t.done && due === tk));
@@ -789,7 +790,7 @@ function buildIcs() {
   const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Goal Setter//EN', 'CALSCALE:GREGORIAN'];
   let count = 0;
   // An undated task has no day to sit on in a calendar, so it can't be exported.
-  state.tasks.filter((t) => t.weight >= 2 && hasDate(t)).forEach((t) => {
+  topLevelTasks().filter((t) => t.weight >= 2 && hasDate(t)).forEach((t) => {
     count++;
     const start = dueDateOf(t).replace(/-/g, '');
     const end = addDays(dueDateOf(t), 1).replace(/-/g, '');
@@ -845,6 +846,10 @@ function cloudPush(what) {
 function isStaleSchema(remote) {
   if (!remote) return true;
   const localHasTasks = Array.isArray(state.tasks) && state.tasks.length;
+  // A v3 client has no concept of a sub-task: it would present them as loose
+  // tasks in their category, let them be reordered and deleted out of their
+  // project, and drop nothing gracefully. Refuse it the same way v2 is refused.
+  if (remote.version === 3) return !!localHasTasks;
   // Never let an empty cloud payload replace local work, whatever version it
   // claims. A device that failed to load its own save once pushed a blank state
   // up, and every other device then faithfully adopted the blank over good data.
@@ -987,6 +992,21 @@ function wire() {
   $('#taskCadence').addEventListener('change', syncModalFields);
   $('#taskDate').addEventListener('input', syncModalFields);   // show/hide Clear
   $('#clearDateBtn').onclick = () => { $('#taskDate').value = ''; syncModalFields(); };
+
+  /* ---- big picture ---- */
+  $('#bpNewBtn').onclick = () => openProjectModal(null);
+  $('#projectCancel').onclick = closeProjectModal;
+  $('#projectSave').onclick = saveProjectModal;
+  $('#projectDate').addEventListener('input', syncProjectModal);
+  $('#projectClearDate').onclick = () => { $('#projectDate').value = ''; syncProjectModal(); };
+  $('#projectDelete').onclick = () => {
+    if (projectEditId) deleteProject(projectEditId);
+    closeProjectModal();
+    renderBigPicture();
+  };
+  $('#projectModal').addEventListener('mousedown', (e) => {
+    if (e.target === $('#projectModal')) closeProjectModal();
+  });
   $('#modalCancel').onclick = closeModal;
   $('#modalDelete').onclick = () => { if (modalEditId) deleteTask(modalEditId); closeModal(); };
   $('#modalSave').onclick = saveModal;

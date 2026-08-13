@@ -176,8 +176,9 @@ const BUILTIN_CATEGORIES = [
 
 function defaultState() {
   return {
-    version: 3,
+    version: 4,
     categories: BUILTIN_CATEGORIES.map((c) => ({ ...c })),
+    projects: [],       // big picture projects; their sub-tasks live in `tasks`
     tasks: [],
     archive: [],        // completed tasks from custom categories
     deleted: [],        // recently deleted tasks, newest first (pruned after 30 days)
@@ -299,6 +300,22 @@ function migrate(s) {
   }
   delete s.dailySplit;
 
+  // Big picture projects. Anything without a usable name or a category that
+  // still exists is dropped rather than left dangling in the UI.
+  if (!Array.isArray(s.projects)) s.projects = [];
+  s.projects = s.projects
+    .filter((p) => p && p.id)
+    .map((p, i) => ({
+      id: p.id,
+      name: String(p.name || 'Project').slice(0, 60),
+      categoryId: s.categories.some((c) => c.id === p.categoryId)
+        ? p.categoryId
+        : (s.categories[0] ? s.categories[0].id : 'daily'),
+      deliverBy: /^\d{4}-\d{2}-\d{2}$/.test(p.deliverBy || '') ? p.deliverBy : null,
+      note: typeof p.note === 'string' ? p.note : '',
+      order: typeof p.order === 'number' ? p.order : i
+    }));
+
   // normalise every task
   const fallbackCat = s.categories[0] ? s.categories[0].id : 'daily';
   const typeOfCat = (id) => { const c = s.categories.find((x) => x.id === id); return c ? c.type : 'custom'; };
@@ -315,12 +332,61 @@ function migrate(s) {
     if (t.recurring && !t.cadence) t.cadence = typeOfCat(t.categoryId) === 'weekly' ? 'weekly' : 'daily';
     // completedAt is a clock time; recurrence needs the DATE it was completed on
     if (!/^\d{4}-\d{2}-\d{2}$/.test(t.completedOn || '')) t.completedOn = t.done ? (s.lastDay || null) : null;
+    // a sub-task whose project is gone becomes an ordinary task again rather
+    // than an invisible orphan nothing renders
+    if (t.parentId && !s.projects.some((p) => p.id === t.parentId)) t.parentId = null;
+    if (!t.parentId) t.parentId = null;
+    // a sub-task always belongs to its project's category
+    if (t.parentId) {
+      const owner = s.projects.find((p) => p.id === t.parentId);
+      if (owner) t.categoryId = owner.categoryId;
+    }
     if (typeof t.order !== 'number') t.order = i;
   });
   s.archive.forEach((t) => { t.weight = Math.max(1, Math.min(5, Number(t.weight) || 1)); });
-  s.version = 3;
+  s.version = 4;
   return s;
 }
+
+/* ---------- big picture projects ----------
+   A project is a named container inside a category. Its sub-tasks are ORDINARY
+   tasks carrying `parentId`, so they live in state.tasks and count towards the
+   weekly bar, milestones and the overdue indicator exactly like anything else.
+   The project itself holds no weight, so nothing is counted twice.
+
+   The inverse is the cost: anything listing top-level work has to filter
+   sub-tasks out, which is what topLevelTasks() is for. */
+const isSubtask = (t) => !!t.parentId;
+const topLevelTasks = (list = state.tasks) => list.filter((t) => !isSubtask(t));
+
+function getProject(id) { return (state.projects || []).find((p) => p.id === id); }
+function projectsOf(catId) {
+  return (state.projects || []).filter((p) => p.categoryId === catId)
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+}
+function subtasksOf(projectId) {
+  return state.tasks.filter((t) => t.parentId === projectId)
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+}
+
+// Weighted, like every other bar in the app.
+function projectProgress(p) { return asProgress(subtasksOf(p.id)); }
+
+// The project's own deadline; falls back to the last thing inside it.
+function projectDue(p) {
+  if (p.deliverBy) return p.deliverBy;
+  const dates = subtasksOf(p.id).map(dueDateOf).filter(Boolean).sort();
+  return dates.length ? dates[dates.length - 1] : null;
+}
+// The next thing actually needing doing inside the project.
+function projectNextDue(p) {
+  const dates = subtasksOf(p.id).filter((t) => !t.done).map(dueDateOf).filter(Boolean).sort();
+  return dates.length ? dates[0] : null;
+}
+const projectDone = (p) => {
+  const subs = subtasksOf(p.id);
+  return subs.length > 0 && subs.every((t) => t.done);
+};
 
 /* ---------- category + task queries ---------- */
 function getCat(id) { return state.categories.find((c) => c.id === id); }
@@ -352,9 +418,12 @@ function activeOn(t, dateKey) {
   return t.deliverBy === dateKey;
 }
 
-// Tasks of a category shown for a given date.
+// Tasks of a category shown for a given date. Sub-tasks are excluded: they're
+// represented by their project everywhere outside the project itself, which
+// keeps the calendar, the day modal and the daily log from being swamped by one
+// large project. This is the single choke point for all of those.
 function catTasksFor(catId, dateKey = todayKey()) {
-  return tasksOf(catId).filter((t) => activeOn(t, dateKey));
+  return topLevelTasks(tasksOf(catId)).filter((t) => activeOn(t, dateKey));
 }
 
 /* ---------- ordering (per-day, collision free) ----------

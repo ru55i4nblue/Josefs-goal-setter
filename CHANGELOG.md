@@ -9,6 +9,17 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ### Added
 
+- **Big Picture projects.** A project groups sub-tasks that each carry their own
+  weight, deliver-by date and context, and sits pinned at the top of its
+  category with a progress bar, the next sub-task's date and the project's own.
+- **A Big Picture tab**, showing every project as a card in a grid. Clicking one
+  opens it out to fill the pane with its sub-tasks; clicking a pinned project in
+  Taskmaster lands in the same place.
+- Sub-tasks are **ordinary work**: they count toward the weekly bar, milestones
+  and the overdue indicator like anything else. The project itself carries no
+  weight, so nothing is counted twice. They appear only inside their project,
+  which keeps the Due date view, Calendar and calendar export uncluttered.
+- Deleting a project takes its sub-tasks with it, with an Undo restoring both.
 - **An Outer space theme** — jet black, as an ultra-dark mode, with four-pointed
   sparkles and a drift of distant dust behind the app. Nebula violet marks today,
   starlight cyan the week. Surfaces are lifted by a hairline and the faintest
@@ -20,6 +31,14 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
   minimum. They read from the chip token now, like the rest of the secondary text.
 - The progress bars hard-coded the deep end of their gradient, so a bar kept a
   green or violet the rest of a theme had moved away from. Both ends are themed.
+- Form labels measured 2.81:1, modal hints 4.48:1 and empty-state hints 2.81:1 —
+  all under the minimum, in every theme. They read from the chip token now.
+
+### Internal
+
+- Save format is **v4**. A v3 client is refused as a sync source, as v2 already
+  was: v3 has no concept of a sub-task and would present them as loose tasks,
+  free to be reordered or deleted out of their project.
 
 ## [2.6.0] — 2026-08-09
 

@@ -93,7 +93,7 @@ body {
   padding: 7px 10px;
   border-bottom: 1px solid var(--border);
 }
-.title { font-size: 12px; font-weight: 700; color: var(--text-soft); }
+.title { font-size: 12px; font-weight: 700; color: var(--chip-text); }
 .header-btns { -webkit-app-region: no-drag; display: flex; gap: 2px; }
 .hbtn {
   -webkit-app-region: no-drag;

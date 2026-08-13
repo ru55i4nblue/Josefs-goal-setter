@@ -5,8 +5,6 @@ const fs = require('fs');
 const isMac = process.platform === 'darwin';
 
 let mainWindow;
-let widgetWin = null;
-let lastWidgetPayload = null;
 
 // Keep the runtime name consistent with the installed exe + startup registry entry.
 app.setName('Goal Setter');
@@ -105,13 +103,26 @@ ipcMain.handle('write-ics', (_e, { filename, content }) => {
   return full;
 });
 
-/* ---------- floating always-on-top sticky widget ---------- */
-function createWidgetWindow() {
+/* ---------- floating always-on-top sticky widgets ----------
+   Two of them: 'all' is the full goal list, 'objective' is the current project.
+   They share one set of IPC channels keyed by id rather than duplicating the
+   plumbing, so a third would only need another entry here. */
+const WIDGETS = {
+  all:       { file: 'widget.html',    width: 260, offsetX: 278, offsetY: 18 },
+  objective: { file: 'objective.html', width: 280, offsetX: 278, offsetY: 292 }
+};
+const widgetWins = {};        // id -> BrowserWindow
+const lastPayloads = {};      // id -> last data sent, replayed on load
+
+function createWidgetWindow(id) {
+  const spec = WIDGETS[id];
+  if (!spec) return null;
   const { workArea } = screen.getPrimaryDisplay();
-  widgetWin = new BrowserWindow({
-    width: 260, height: 246,
-    x: workArea.x + workArea.width - 260 - 18,
-    y: workArea.y + 18,
+  const win = new BrowserWindow({
+    width: spec.width, height: 246,
+    // stacked down the right edge so the two never open on top of each other
+    x: workArea.x + workArea.width - spec.offsetX,
+    y: workArea.y + spec.offsetY,
     frame: false,
     transparent: true,
     resizable: false,
@@ -123,41 +134,46 @@ function createWidgetWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'widget-preload.js'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      additionalArguments: [`--widget-id=${id}`]
     }
   });
   // 'screen-saver' level floats above macOS fullscreen apps ('floating' does not);
   // skipTransformProcessType stops macOS from bouncing the dock when it shows.
-  widgetWin.setAlwaysOnTop(true, 'screen-saver');
-  widgetWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true, skipTransformProcessType: true });
-  widgetWin.loadFile('widget.html');
-  widgetWin.webContents.on('did-finish-load', () => {
-    if (lastWidgetPayload) widgetWin.webContents.send('widget:data', lastWidgetPayload);
+  win.setAlwaysOnTop(true, 'screen-saver');
+  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true, skipTransformProcessType: true });
+  win.loadFile(spec.file);
+  win.webContents.on('did-finish-load', () => {
+    if (lastPayloads[id]) win.webContents.send('widget:data', lastPayloads[id]);
   });
-  widgetWin.on('closed', () => { widgetWin = null; });
+  win.on('closed', () => { delete widgetWins[id]; });
+  widgetWins[id] = win;
+  return win;
 }
 
-// main app -> show/hide the widget
-ipcMain.handle('widget:set', (_e, open) => {
+// main app -> show/hide a widget
+ipcMain.handle('widget:set', (_e, { id, open } = {}) => {
+  if (!WIDGETS[id]) return false;
   if (open) {
-    if (!widgetWin) createWidgetWindow();
-    else widgetWin.show();
-  } else if (widgetWin) {
-    widgetWin.close();
+    if (!widgetWins[id]) createWidgetWindow(id);
+    else widgetWins[id].show();
+  } else if (widgetWins[id]) {
+    widgetWins[id].close();
   }
-  return !!widgetWin;
+  return !!widgetWins[id];
 });
 
-// main app -> latest task data for the widget
-ipcMain.on('widget:push', (_e, payload) => {
-  lastWidgetPayload = payload;
-  if (widgetWin) widgetWin.webContents.send('widget:data', payload);
+// main app -> latest data for a widget
+ipcMain.on('widget:push', (_e, { id, payload } = {}) => {
+  if (!WIDGETS[id]) return;
+  lastPayloads[id] = payload;
+  if (widgetWins[id]) widgetWins[id].webContents.send('widget:data', payload);
 });
 
-// widget's close button -> hide + tell the main app so its toggle stays in sync
-ipcMain.on('widget:close', () => {
-  if (widgetWin) widgetWin.close();
-  if (mainWindow) mainWindow.webContents.send('widget:closed');
+// a widget's close button -> hide + tell the main app so its toggle stays in sync
+ipcMain.on('widget:close', (_e, { id } = {}) => {
+  if (widgetWins[id]) widgetWins[id].close();
+  if (mainWindow) mainWindow.webContents.send('widget:closed', { id });
 });
 
 // widget -> bring the main app forward
@@ -171,9 +187,10 @@ ipcMain.on('widget:toggle', (_e, payload) => {
 });
 
 // widget -> resize its window to hug the content height
-ipcMain.on('widget:resize', (_e, height) => {
-  if (!widgetWin) return;
-  const h = Math.max(120, Math.min(600, Math.round(height)));
-  const [w] = widgetWin.getSize();
-  widgetWin.setSize(w, h);
+ipcMain.on('widget:resize', (_e, { id, height } = {}) => {
+  const win = widgetWins[id];
+  if (!win) return;
+  const h = Math.max(110, Math.min(600, Math.round(height)));
+  const [w] = win.getSize();
+  win.setSize(w, h);
 });

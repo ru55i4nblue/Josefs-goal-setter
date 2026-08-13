@@ -597,6 +597,17 @@ body.dark .checkbox.weekly.checked::after { color: #08130c; }
   font-size: 11px; color: var(--chip-text); font-variant-numeric: tabular-nums;
 }
 
+/* A project bar is a milestone card that clicks through to its project, and
+   wears the project's category colour on its edge. */
+.project-bar {
+  width: 100%; text-align: left; cursor: pointer; font-family: inherit;
+  border-left: 3px solid var(--c, var(--border-strong));
+}
+.project-bar:hover { border-color: var(--c, var(--border-strong)); background: var(--hover); }
+.project-bar .milestone-fill {
+  background: linear-gradient(90deg, var(--c, var(--accent-solid)), var(--accent-solid));
+}
+
 .milestone-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
 .milestone-row { border-left-width: 1px !important; }
 .milestone-add { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }

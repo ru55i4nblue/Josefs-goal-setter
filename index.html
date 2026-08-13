@@ -59,7 +59,8 @@
         <span id="accountEmail" class="account-email"></span>
         <button id="signOutBtn" class="sidebar-btn account-signout">Sign out</button>
       </div>
-      <button id="widgetToggle" class="sidebar-btn">📌 Sticky widget: off</button>
+      <button id="widgetToggle" class="sidebar-btn">📌 All goals: off</button>
+      <button id="objectiveToggle" class="sidebar-btn">◎ Current objective: off</button>
       <button id="themeToggle" class="sidebar-btn">🌙 Dark mode</button>
     </aside>
 
@@ -84,6 +85,7 @@
           <span id="clearIcon" class="clear-icon">✓</span>
           <span id="clearText" class="clear-text">Up to date</span>
         </div>
+        <div id="projectBars" class="milestone-bars"></div>
         <div id="milestoneBars" class="milestone-bars"></div>
         <div class="bars-stack">
           <div class="vbar-group">
@@ -269,6 +271,19 @@
           <button id="exportNowBtn" class="btn-ghost">⤓ Export log now</button>
           <button id="startupToggle" class="btn-ghost">⏻ Launch at startup: off</button>
         </div>
+      </section>
+
+      <section id="objectiveCard" class="create-card settings-card">
+        <h2 class="create-h2">Current objective <span class="desktop-only-tag">desktop only</span></h2>
+        <p class="modal-hint">A second sticky widget showing the next few
+          sub-tasks from one project. Toggle it from the sidebar.</p>
+
+        <label class="field-label">Project</label>
+        <select id="setObjectiveProject" class="text-input"></select>
+
+        <label class="field-label">Sub-tasks shown</label>
+        <input id="setObjectiveCount" class="text-input widget-top-input"
+               type="number" min="1" max="10" step="1" />
       </section>
 
       <section class="create-card settings-card">

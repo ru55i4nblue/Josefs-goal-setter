@@ -781,7 +781,44 @@ function renderBars() {
     : 'add dated tasks to begin';
 
   renderClearIndicator(overdue);
+  renderProjectBars();
   renderMilestones();
+}
+
+// Projects sit in the bars column alongside the milestones — same card shape, so
+// the column reads as one list of things being tracked rather than two.
+function renderProjectBars() {
+  const host = $('#projectBars');
+  if (!host) return;
+  host.innerHTML = '';
+  (state.projects || []).forEach((p) => {
+    const prog = projectProgress(p);
+    const cat = getCat(p.categoryId) || { name: '—', color: 'gray' };
+    const row = el('button', `milestone project-bar tint-${cat.color}`);
+    row.type = 'button';
+    row.onclick = () => openProject(p.id);
+    row.title = `Open “${p.name}” in Big Picture`;
+
+    const head = el('div', 'milestone-head');
+    const nm = el('span', 'milestone-name');
+    nm.textContent = p.name;
+    const pc = el('span', 'milestone-pct');
+    pc.textContent = Math.round(prog.pct) + '%';
+    head.appendChild(nm); head.appendChild(pc);
+    row.appendChild(head);
+
+    const track = el('div', 'milestone-track');
+    const fill = el('div', 'milestone-fill');
+    fill.style.width = prog.pct + '%';
+    track.appendChild(fill);
+    row.appendChild(track);
+
+    const subs = subtasksOf(p.id);
+    const sub = el('div', 'milestone-sub');
+    sub.textContent = `${subs.filter((t) => t.done).length}/${subs.length}  ·  ${projectMetaLine(p)}`;
+    row.appendChild(sub);
+    host.appendChild(row);
+  });
 }
 
 // "Are we straight?" answered before any percentage. Undated work is a someday
@@ -932,7 +969,37 @@ function pushWidget() {
   } else {
     sections = chosen.map((c) => widgetSection(c, dateKey));
   }
-  window.goalAPI.pushWidget({ theme: state.theme, sections });
+  window.goalAPI.pushWidget('all', { theme: state.theme, sections });
+  pushObjective();
+}
+
+// The Current objective widget: one project, its next few outstanding sub-tasks.
+// Finished ones are dropped rather than shown struck through — the point is what
+// to do next, not what's been done.
+function objectivePayload() {
+  const p = getProject(state.settings.objectiveProject);
+  if (!p) return { theme: state.theme, project: null, tasks: [], remaining: 0 };
+  const n = Math.max(OBJECTIVE_MIN,
+    Math.min(OBJECTIVE_MAX, Math.round(Number(state.settings.objectiveCount)) || 4));
+  const dateKey = todayKey();
+  const open = subtasksOf(p.id).filter((t) => !t.done)
+    .sort((a, b) => compareDue(a, b) || b.weight - a.weight);
+  const shown = open.slice(0, n);
+  return {
+    theme: state.theme,
+    project: p.name,
+    pct: Math.round(projectProgress(p).pct),
+    remaining: Math.max(0, open.length - shown.length),
+    tasks: shown.map((t) => ({
+      id: t.id, kind: t.categoryId, title: t.title, done: t.done,
+      due: relativeDueShort(dueDateOf(t)),
+      overdue: hasDate(t) && dueDateOf(t) < dateKey
+    }))
+  };
+}
+function pushObjective() {
+  if (!window.goalAPI || !window.goalAPI.pushWidget) return;
+  window.goalAPI.pushWidget('objective', objectivePayload());
 }
 
 /* ============================================================
@@ -1149,13 +1216,16 @@ function applyTheme() {
 }
 function applyPlatformUI() {
   if (!window.goalAPI) {
-    ['#startupToggle', '#exportNowBtn', '#exportGcalBtn', '#logTimeRow', '#widgetToggle']
+    ['#startupToggle', '#exportNowBtn', '#exportGcalBtn', '#logTimeRow',
+      '#widgetToggle', '#objectiveToggle', '#objectiveCard']
       .forEach((s) => { const e = $(s); if (e) e.classList.add('hidden'); });
   }
 }
 function updateWidgetToggle() {
   const b = $('#widgetToggle');
-  if (b) b.textContent = '📌 Sticky widget: ' + (state.widgetOpen ? 'on' : 'off');
+  if (b) b.textContent = '📌 All goals: ' + (state.widgetOpen ? 'on' : 'off');
+  const o = $('#objectiveToggle');
+  if (o) o.textContent = '◎ Current objective: ' + (state.objectiveOpen ? 'on' : 'off');
 }
 function setStartupLabel(on) {
   $('#startupToggle').textContent = '⏻ Launch at startup: ' + (on ? 'on' : 'off');

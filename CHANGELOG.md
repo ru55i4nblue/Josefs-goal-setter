@@ -20,6 +20,14 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
   weight, so nothing is counted twice. They appear only inside their project,
   which keeps the Due date view, Calendar and calendar export uncluttered.
 - Deleting a project takes its sub-tasks with it, with an Undo restoring both.
+- **Every project also gets a bar in the progress column**, beside the milestones
+  and wearing its category's colour. Clicking one opens it.
+- **A Current objective widget** — a second sticky widget, independent of the
+  all-goals one, showing the next few outstanding sub-tasks from a project you
+  choose, with its name and progress. Completed sub-tasks drop off rather than
+  linger struck through, and a "+N more" line shows what's been trimmed. The
+  project and the number shown are set in Settings; both widgets toggle
+  separately from the sidebar.
 - **An Outer space theme** — jet black, as an ultra-dark mode, with four-pointed
   sparkles and a drift of distant dust behind the app. Nebula violet marks today,
   starlight cyan the week. Surfaces are lifted by a hairline and the faintest
@@ -31,8 +39,9 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
   minimum. They read from the chip token now, like the rest of the secondary text.
 - The progress bars hard-coded the deep end of their gradient, so a bar kept a
   green or violet the rest of a theme had moved away from. Both ends are themed.
-- Form labels measured 2.81:1, modal hints 4.48:1 and empty-state hints 2.81:1 —
-  all under the minimum, in every theme. They read from the chip token now.
+- Form labels measured 2.81:1, modal hints 4.48:1, empty-state hints 2.81:1 and
+  the widget header 4.48:1 — all under the minimum, in every theme. They read
+  from the chip token now.
 
 ### Internal
 

@@ -139,6 +139,9 @@ const WIDGET_MODES = [
 ];
 const WIDGET_TOP_MIN = 1;
 const WIDGET_TOP_MAX = 12;
+// how many sub-tasks the Current objective widget shows at once
+const OBJECTIVE_MIN = 1;
+const OBJECTIVE_MAX = 10;
 
 function weekKeyFromKey(key) {
   const [y, m, d] = key.split('-').map(Number);
@@ -189,7 +192,8 @@ function defaultState() {
       showImport: true, showWeightNotes: true,
       dateFormat: DEFAULT_DATE_FORMAT, dueDisplay: 'both',
       widgetMode: 'categories', widgetCategory: 'daily', widgetTop: 5,
-      weekStart: 1, milestones: []
+      weekStart: 1, milestones: [],
+      objectiveProject: null, objectiveCount: 4
     },
     taskmasterView: 'categories',   // 'categories' (per-category boxes) | 'grouped' (one due-today box)
     lastDay: todayKey(),
@@ -197,6 +201,7 @@ function defaultState() {
     loggedDays: [],
     logTime: '22:00',
     widgetOpen: false,
+    objectiveOpen: false,      // the Current objective widget toggles independently
     theme: 'light'
   };
 }
@@ -244,6 +249,13 @@ function migrate(s) {
     .filter((m) => m && /^\d{4}-\d{2}-\d{2}$/.test(m.date))
     .map((m) => ({ id: m.id || uid(), name: String(m.name || 'Milestone').slice(0, 40), date: m.date }))
     .slice(0, MILESTONE_MAX);
+  // current objective widget: which project, and how many sub-tasks to show
+  if (!s.projects.some((p) => p.id === s.settings.objectiveProject)) {
+    s.settings.objectiveProject = s.projects.length ? s.projects[0].id : null;
+  }
+  s.settings.objectiveCount = Math.max(OBJECTIVE_MIN,
+    Math.min(OBJECTIVE_MAX, Math.round(Number(s.settings.objectiveCount)) || 4));
+  if (typeof s.objectiveOpen !== 'boolean') s.objectiveOpen = false;
   // lastWeek used to be an ISO week number ("2026-W32"). Rewrite it to the new
   // start-date form for the CURRENT week, so upgrading doesn't look like a week
   // boundary and fire a spurious archive + recurring reset.

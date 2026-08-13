@@ -372,6 +372,25 @@ function renderWidgetSettings() {
 
   $('#setWidgetTop').value = state.settings.widgetTop || 5;
 
+  // current objective widget
+  const op = $('#setObjectiveProject');
+  op.innerHTML = '';
+  if (!(state.projects || []).length) {
+    const o = document.createElement('option');
+    o.value = ''; o.textContent = 'No projects yet';
+    op.appendChild(o);
+    op.disabled = true;
+  } else {
+    op.disabled = false;
+    state.projects.forEach((p) => {
+      const o = document.createElement('option');
+      o.value = p.id; o.textContent = p.name;
+      op.appendChild(o);
+    });
+    op.value = state.settings.objectiveProject || state.projects[0].id;
+  }
+  $('#setObjectiveCount').value = state.settings.objectiveCount || 4;
+
   const host = $('#widgetCatList');
   host.innerHTML = '';
   state.categories.forEach((c) => {
@@ -1141,6 +1160,21 @@ function wire() {
   };
   // snap a typed-out-of-range value back once the field is left
   $('#setWidgetTop').onblur = () => { $('#setWidgetTop').value = state.settings.widgetTop; };
+
+  /* ---- current objective ---- */
+  $('#setObjectiveProject').onchange = (e) => {
+    state.settings.objectiveProject = e.target.value || null;
+    save(); pushObjective();
+  };
+  $('#setObjectiveCount').oninput = (e) => {
+    const n = Math.round(Number(e.target.value));
+    if (!n) return;                                   // mid-edit empty field
+    state.settings.objectiveCount = Math.max(OBJECTIVE_MIN, Math.min(OBJECTIVE_MAX, n));
+    save(); pushObjective();
+  };
+  $('#setObjectiveCount').onblur = () => {
+    $('#setObjectiveCount').value = state.settings.objectiveCount;
+  };
   $('#logTimeInput').value = state.logTime || '22:00';
   $('#logTimeInput').onchange = (e) => {
     const v = e.target.value;
@@ -1162,18 +1196,32 @@ function wire() {
     state.widgetOpen = !state.widgetOpen;
     save(); updateWidgetToggle();
     if (window.goalAPI && window.goalAPI.setWidget) {
-      await window.goalAPI.setWidget(state.widgetOpen);
+      await window.goalAPI.setWidget('all', state.widgetOpen);
       if (state.widgetOpen) pushWidget();
     }
   };
+  $('#objectiveToggle').onclick = async () => {
+    state.objectiveOpen = !state.objectiveOpen;
+    save(); updateWidgetToggle();
+    if (window.goalAPI && window.goalAPI.setWidget) {
+      await window.goalAPI.setWidget('objective', state.objectiveOpen);
+      if (state.objectiveOpen) pushObjective();
+    }
+  };
+  // closing either widget from its own ✕ keeps only that toggle in sync
   if (window.goalAPI && window.goalAPI.onWidgetClosed) {
-    window.goalAPI.onWidgetClosed(() => { state.widgetOpen = false; save(); updateWidgetToggle(); });
+    window.goalAPI.onWidgetClosed(({ id }) => {
+      if (id === 'objective') state.objectiveOpen = false;
+      else state.widgetOpen = false;
+      save(); updateWidgetToggle();
+    });
   }
   if (window.goalAPI && window.goalAPI.onWidgetToggle) {
     window.goalAPI.onWidgetToggle(({ id }) => toggleTask(id));
   }
-  if (state.widgetOpen && window.goalAPI && window.goalAPI.setWidget) {
-    window.goalAPI.setWidget(true).then(() => pushWidget());
+  if (window.goalAPI && window.goalAPI.setWidget) {
+    if (state.widgetOpen) window.goalAPI.setWidget('all', true).then(() => pushWidget());
+    if (state.objectiveOpen) window.goalAPI.setWidget('objective', true).then(() => pushObjective());
   }
 
   /* ---- startup toggle ---- */

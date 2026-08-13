@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="widget.css" />
+  <link rel="stylesheet" href="objective.css" />
+</head>
+<body>
+  <div class="card obj-card">
+    <div class="card-header">
+      <span class="title">Current Objective</span>
+      <div class="header-btns">
+        <button id="openBtn" class="hbtn" title="Open app">⇱</button>
+        <button id="closeBtn" class="hbtn" title="Hide widget">✕</button>
+      </div>
+    </div>
+
+    <div class="obj-project">
+      <span id="objName" class="obj-name">No project chosen</span>
+      <span id="objPct" class="obj-pct"></span>
+    </div>
+    <div class="obj-track"><div id="objFill" class="obj-fill"></div></div>
+
+    <div id="objList" class="obj-list"></div>
+    <div id="objMore" class="obj-more"></div>
+  </div>
+
+  <script src="objective.js"></script>
+</body>
+</html>

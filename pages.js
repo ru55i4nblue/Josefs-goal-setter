@@ -1011,6 +1011,12 @@ function wire() {
   $('#taskCadence').addEventListener('change', syncModalFields);
   $('#taskDate').addEventListener('input', syncModalFields);   // show/hide Clear
   $('#clearDateBtn').onclick = () => { $('#taskDate').value = ''; syncModalFields(); };
+  $('#stepAddBtn').onclick = addModalStep;
+  $('#stepInput').addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();          // Enter here adds a step, it doesn't submit
+    addModalStep();
+  });
 
   /* ---- big picture ---- */
   $('#bpNewBtn').onclick = () => openProjectModal(null);

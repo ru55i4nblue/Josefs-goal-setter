@@ -186,6 +186,26 @@ function restoreDeleted(id) {
   toast(`Restored “${task.title}”`);
 }
 
+// Steps arrive from the modal as plain strings or as existing {id,title,done}.
+function normaliseSteps(list) {
+  return (Array.isArray(list) ? list : [])
+    .map((x) => (typeof x === 'string' ? { title: x } : x))
+    .filter((x) => x && String(x.title || '').trim())
+    .map((x) => ({ id: x.id || uid(), title: String(x.title).trim().slice(0, 120), done: !!x.done }))
+    .slice(0, STEP_MAX);
+}
+
+// Ticking a step is a direct edit — it has no weight, so nothing recalculates
+// beyond the task's own N/M readout.
+function toggleStep(taskId, stepId) {
+  const t = findTask(taskId);
+  if (!t) return;
+  const s = stepsOf(t).find((x) => x.id === stepId);
+  if (!s) return;
+  s.done = !s.done;
+  afterChange();
+}
+
 /* ---------- big picture projects ---------- */
 function addProject(opts) {
   const name = (opts.name || '').trim();
@@ -255,6 +275,7 @@ function addTask(opts) {
     days: recurring ? (opts.days || []) : [],
     // a sub-task when it names a project it belongs to
     parentId: (opts.parentId && getProject(opts.parentId)) ? opts.parentId : null,
+    steps: normaliseSteps(opts.steps),
     // optional, and never set for routine — a chore recurs, it isn't due
     deliverBy: cat.type === 'routine' ? null : (opts.deliverBy || null),
     done: false,
@@ -290,6 +311,7 @@ function updateTask(id, patch) {
     deliverBy: nowRoutine ? null : (patch.deliverBy || null),
     recurring: !!patch.recurring
   });
+  if (patch.steps !== undefined) t.steps = normaliseSteps(patch.steps);
   const cat = getCat(t.categoryId);
   if (t.recurring) {
     t.cadence = patch.cadence || t.cadence || (cat.type === 'weekly' ? 'weekly' : 'daily');
@@ -551,6 +573,15 @@ function taskRow(t, container, dateKey, cat) {
     row.appendChild(dueBadge);
   }
 
+  // steps are a checklist, not weight — show how far through, nothing more
+  const sp = stepProgress(t);
+  if (sp.total) {
+    const chip = el('span', 'step-count' + (sp.done === sp.total ? ' complete' : ''));
+    chip.textContent = `☑ ${sp.done}/${sp.total}`;
+    chip.title = `${sp.done} of ${sp.total} steps done`;
+    row.appendChild(chip);
+  }
+
   // Routine is weightless by design — no score, no badge.
   if (catHasWeight(cat.id)) {
     const badge = el('span', 'weight-badge w' + t.weight);
@@ -732,9 +763,26 @@ function projectDetail(p) {
     hint.textContent = 'No sub-tasks yet — add one with ＋ Sub-task.';
     wrap.appendChild(hint);
   } else {
-    // ordinary task rows, so weights, due badges and drag-ordering come along
+    // ordinary task rows, so weights, due badges and drag-ordering come along,
+    // each followed by its own step checklist
     const list = el('div', 'task-list bp-subtasks');
-    subs.forEach((t) => list.appendChild(taskRow(t, list, todayKey(), cat)));
+    subs.forEach((t) => {
+      list.appendChild(taskRow(t, list, todayKey(), cat));
+      const steps = stepsOf(t);
+      if (!steps.length) return;
+      const sl = el('div', 'step-checklist');
+      steps.forEach((s) => {
+        const r = el('div', 'step-item' + (s.done ? ' done' : ''));
+        const box = el('span', 'step-box' + (s.done ? ' done' : ''));
+        const nm = el('span', 'step-item-name');
+        nm.textContent = s.title;
+        r.appendChild(box); r.appendChild(nm);
+        r.title = 'Click to check off';
+        r.onclick = () => toggleStep(t.id, s.id);
+        sl.appendChild(r);
+      });
+      list.appendChild(sl);
+    });
     makeSortable(list, cat, todayKey());
     wrap.appendChild(list);
   }
@@ -1007,6 +1055,60 @@ function pushObjective() {
    ============================================================ */
 let modalEditId = null, modalWeight = 1, modalDays = new Set(), modalCatId = 'daily';
 let modalParentId = null;   // non-null while the modal is editing a sub-task
+let modalSteps = [];        // working copy; only committed on save
+
+function renderModalSteps() {
+  const host = $('#stepList');
+  host.innerHTML = '';
+  if (!modalSteps.length) {
+    const hint = el('div', 'step-empty');
+    hint.textContent = 'No steps yet.';
+    host.appendChild(hint);
+  }
+  modalSteps.forEach((s, i) => {
+    const row = el('div', 'step-row');
+
+    const box = el('button', 'step-box' + (s.done ? ' done' : ''));
+    box.type = 'button';
+    box.title = s.done ? 'Mark not done' : 'Mark done';
+    box.onclick = () => { s.done = !s.done; renderModalSteps(); };
+    row.appendChild(box);
+
+    const name = el('input', 'step-title');
+    name.type = 'text'; name.value = s.title; name.maxLength = 120;
+    name.onchange = () => {
+      const v = name.value.trim();
+      if (v) s.title = v; else name.value = s.title;
+    };
+    row.appendChild(name);
+
+    const up = el('button', 'step-move');
+    up.type = 'button'; up.textContent = '↑'; up.title = 'Move up'; up.disabled = i === 0;
+    up.onclick = () => {
+      [modalSteps[i - 1], modalSteps[i]] = [modalSteps[i], modalSteps[i - 1]];
+      renderModalSteps();
+    };
+    row.appendChild(up);
+
+    const del = el('button', 'step-del');
+    del.type = 'button'; del.textContent = '✕'; del.title = 'Remove step';
+    del.onclick = () => { modalSteps.splice(i, 1); renderModalSteps(); };
+    row.appendChild(del);
+
+    host.appendChild(row);
+  });
+  $('#stepAddBtn').disabled = modalSteps.length >= STEP_MAX;
+  $('#stepInput').disabled = modalSteps.length >= STEP_MAX;
+}
+
+function addModalStep() {
+  const v = $('#stepInput').value.trim();
+  if (!v || modalSteps.length >= STEP_MAX) return;
+  modalSteps.push({ id: uid(), title: v.slice(0, 120), done: false });
+  $('#stepInput').value = '';
+  renderModalSteps();
+  $('#stepInput').focus();
+}
 
 // Every category is a valid destination now, Routine included — moving into it
 // drops the task's date and weight, moving out lets it earn them back.
@@ -1043,6 +1145,7 @@ function syncModalFields() {
     cat.type === 'routine' || (cat.type === 'custom' && recurring));
   $('#dateLabel').textContent = isWeeklyCat ? 'Deliver by (any date in the target week)' : 'Deliver by';
   $('#clearDateBtn').classList.toggle('hidden', !$('#taskDate').value);
+  renderModalSteps();
 }
 
 function openModal(opts = {}) {
@@ -1050,6 +1153,7 @@ function openModal(opts = {}) {
   modalWeight = 1;
   modalDays = new Set();
   modalParentId = opts.parentId || null;      // set when adding inside a project
+  modalSteps = [];
   modalCatId = opts.categoryId || defaultCatId();
   $('#modalTitle').textContent = 'New task';
   $('#modalSave').textContent = 'Add task';
@@ -1076,6 +1180,8 @@ function openEditModal(id) {
   modalWeight = t.weight;
   modalDays = new Set(t.days || []);
   modalParentId = t.parentId || null;
+  // a copy, so cancelling the dialog leaves the task's own steps untouched
+  modalSteps = stepsOf(t).map((s) => ({ ...s }));
   modalCatId = t.categoryId;
   $('#modalTitle').textContent = 'Edit task';
   $('#modalSave').textContent = 'Save changes';
@@ -1112,7 +1218,8 @@ function saveModal() {
     cadence,
     days: cadence === 'daily' ? [...modalDays].sort() : [],
     deliverBy: $('#taskDate').value || null,     // blank means genuinely undated
-    parentId: modalParentId
+    parentId: modalParentId,
+    steps: modalSteps
   };
   if (modalEditId) updateTask(modalEditId, payload);
   else addTask(payload);

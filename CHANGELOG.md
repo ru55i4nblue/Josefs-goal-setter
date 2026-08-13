@@ -20,6 +20,12 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
   weight, so nothing is counted twice. They appear only inside their project,
   which keeps the Due date view, Calendar and calendar export uncluttered.
 - Deleting a project takes its sub-tasks with it, with an Undo restoring both.
+- **Steps: a third level.** A task can hold a plain checklist of steps, which
+  carry no weight and no date — the task above already holds both, and giving a
+  step either would count it twice against the bars. Steps are edited in the task
+  dialog, shown indented beneath their task inside a project, and summarised as a
+  `☑ 2/3` chip wherever the task appears. Ticking every step doesn't complete the
+  task; that stays your call.
 - **Every project also gets a bar in the progress column**, beside the milestones
   and wearing its category's colour. Clicking one opens it.
 - **A Current objective widget** — a second sticky widget, independent of the
@@ -39,9 +45,9 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
   minimum. They read from the chip token now, like the rest of the secondary text.
 - The progress bars hard-coded the deep end of their gradient, so a bar kept a
   green or violet the rest of a theme had moved away from. Both ends are themed.
-- Form labels measured 2.81:1, modal hints 4.48:1, empty-state hints 2.81:1 and
-  the widget header 4.48:1 — all under the minimum, in every theme. They read
-  from the chip token now.
+- Form labels measured 2.81:1, modal hints 4.48:1, empty-state hints 2.81:1, the
+  "optional" field note 2.81:1 and the widget header 4.48:1 — all under the
+  minimum, in every theme. They read from the chip token now.
 
 ### Internal
 

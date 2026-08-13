@@ -346,6 +346,13 @@ function migrate(s) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(t.completedOn || '')) t.completedOn = t.done ? (s.lastDay || null) : null;
     // a sub-task whose project is gone becomes an ordinary task again rather
     // than an invisible orphan nothing renders
+    // Steps are a plain checklist: title + done, nothing else. Anything that
+    // arrived carrying a weight or a date has it stripped here rather than being
+    // allowed to look like a task.
+    t.steps = (Array.isArray(t.steps) ? t.steps : [])
+      .filter((x) => x && String(x.title || '').trim())
+      .map((x) => ({ id: x.id || uid(), title: String(x.title).trim().slice(0, 120), done: !!x.done }))
+      .slice(0, STEP_MAX);
     if (t.parentId && !s.projects.some((p) => p.id === t.parentId)) t.parentId = null;
     if (!t.parentId) t.parentId = null;
     // a sub-task always belongs to its project's category
@@ -395,6 +402,18 @@ function projectNextDue(p) {
   const dates = subtasksOf(p.id).filter((t) => !t.done).map(dueDateOf).filter(Boolean).sort();
   return dates.length ? dates[0] : null;
 }
+/* ---------- steps ----------
+   The third level: a plain checklist inside a task. Steps deliberately carry no
+   weight and no date — the task above them already holds both, and giving a step
+   either would double-count it against the bars. They're kept on the task rather
+   than in state.tasks precisely because they are not tasks. */
+const STEP_MAX = 30;
+const stepsOf = (t) => (Array.isArray(t.steps) ? t.steps : []);
+function stepProgress(t) {
+  const s = stepsOf(t);
+  return { total: s.length, done: s.filter((x) => x.done).length };
+}
+
 const projectDone = (p) => {
   const subs = subtasksOf(p.id);
   return subs.length > 0 && subs.every((t) => t.done);

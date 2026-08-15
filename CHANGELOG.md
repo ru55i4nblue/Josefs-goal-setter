@@ -7,7 +7,13 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
-_Nothing yet._
+### Fixed
+
+- **The phone no longer offers Widget settings it can't use.** The Widget card —
+  layout picker, category selector and shortlist length — configures a sticky
+  widget that only exists on the desktop app, so it now hides on the PWA
+  alongside the Current objective card, and carries the same "desktop only" tag
+  on the desktop.
 
 ## [2.7.0] — 2026-08-13
 

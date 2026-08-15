@@ -1324,7 +1324,7 @@ function applyTheme() {
 function applyPlatformUI() {
   if (!window.goalAPI) {
     ['#startupToggle', '#exportNowBtn', '#exportGcalBtn', '#logTimeRow',
-      '#widgetToggle', '#objectiveToggle', '#objectiveCard']
+      '#widgetToggle', '#objectiveToggle', '#objectiveCard', '#widgetCard']
       .forEach((s) => { const e = $(s); if (e) e.classList.add('hidden'); });
   }
 }

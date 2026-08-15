@@ -190,7 +190,10 @@ ipcMain.on('widget:toggle', (_e, payload) => {
 ipcMain.on('widget:resize', (_e, { id, height } = {}) => {
   const win = widgetWins[id];
   if (!win) return;
-  const h = Math.max(110, Math.min(600, Math.round(height)));
+  // the objective widget now shows every step, so it can legitimately grow tall;
+  // bound it by the screen it has to sit on rather than a flat 600
+  const { workArea } = screen.getPrimaryDisplay();
+  const h = Math.max(110, Math.min(Math.max(300, workArea.height - 60), Math.round(height)));
   const [w] = win.getSize();
   win.setSize(w, h);
 });

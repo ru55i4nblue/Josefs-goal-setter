@@ -212,6 +212,14 @@ by one — doing the latter leaves an empty heading behind — and tag it with
 `<span class="desktop-only-tag">desktop only</span>`. `sw.js` is network-first, so a UI
 change needs no `CACHE` bump to reach phones.
 
+**The Current objective widget** shows one project's next few outstanding sub-tasks, each
+with its steps listed under it in full. How many sub-tasks appear is Settings → Current
+objective → **Sub-tasks shown** (`settings.objectiveCount`, clamped 1–10 by
+`OBJECTIVE_MIN/MAX` in model.js). Steps are deliberately read-only there: they carry no
+weight, so ticking one would move no bar. `widget.css` holds the widget's own copy of the
+theme tokens — it is *not* `styles.css`, so a token that exists in the app may not exist
+here; check before using one (`--border-strong` had to be added for the step rule).
+
 **A UI control must never display a value the state doesn't hold.** `renderSettings()` used
 to set the objective project dropdown's `value` to a fallback without writing it back, so
 the select showed a project that `settings.objectiveProject` didn't hold — and since the

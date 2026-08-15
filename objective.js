@@ -29,6 +29,32 @@ function row(t) {
   return el;
 }
 
+// A task's steps, shown under it as an indented checklist — the same shape the
+// app uses inside a project. Read-only: the row above is what you tick.
+function stepList(t) {
+  const steps = t.steps || [];
+  if (!steps.length) return null;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'obj-steps';
+  steps.forEach((s) => {
+    const item = document.createElement('div');
+    item.className = 'obj-step' + (s.done ? ' done' : '');
+
+    const box = document.createElement('span');
+    box.className = 'obj-step-box' + (s.done ? ' done' : '');
+
+    const name = document.createElement('span');
+    name.className = 'obj-step-name';
+    name.textContent = s.title;
+
+    item.appendChild(box);
+    item.appendChild(name);
+    wrap.appendChild(item);
+  });
+  return wrap;
+}
+
 function applyData(d) {
   document.body.classList.toggle('dark', d.theme === 'dark' || d.theme === 'space');
   document.body.classList.toggle('pond', d.theme === 'pond');
@@ -47,7 +73,11 @@ function applyData(d) {
     e.textContent = d.project ? 'Nothing left in this project.' : 'Choose a project in Settings.';
     host.appendChild(e);
   } else {
-    tasks.forEach((t) => host.appendChild(row(t)));
+    tasks.forEach((t) => {
+      host.appendChild(row(t));
+      const steps = stepList(t);
+      if (steps) host.appendChild(steps);
+    });
   }
 
   // "+3 more" so a trimmed list doesn't look like the whole project

@@ -7,7 +7,14 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- **The Current objective widget lists each task's steps beneath it**, always and
+  in full, as an indented checklist matching the one inside a project. Ticked
+  steps show struck through. They're read-only here — a step carries no weight,
+  so ticking one from the widget would move no bar; the task above it is what you
+  check off. The widget grows to fit and is now bounded by the height of the
+  screen rather than a flat 600px, so a long checklist isn't clipped.
 
 ## [2.7.1] — 2026-08-15
 

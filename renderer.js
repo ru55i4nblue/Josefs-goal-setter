@@ -1044,7 +1044,11 @@ function objectivePayload() {
     tasks: shown.map((t) => ({
       id: t.id, kind: t.categoryId, title: t.title, done: t.done,
       due: relativeDueShort(dueDateOf(t)),
-      overdue: hasDate(t) && dueDateOf(t) < dateKey
+      overdue: hasDate(t) && dueDateOf(t) < dateKey,
+      // every step, always — the widget is there to say what the next move is,
+      // and a task's steps are that. They stay read-only: a step carries no
+      // weight, so ticking one here would move no bar and mislead.
+      steps: stepsOf(t).map((s) => ({ id: s.id, title: s.title, done: s.done }))
     }))
   };
 }

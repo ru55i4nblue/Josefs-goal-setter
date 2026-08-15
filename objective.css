@@ -58,6 +58,36 @@
 .obj-due.today { color: var(--accent-text); font-weight: 700; }
 .obj-due.overdue { color: var(--danger-text); font-weight: 700; }
 
+/* Steps under their task. Indented to line up under the task's title, past its
+   16px box and 9px gap. Muted and smaller than the task: they're context for the
+   row above, not competing with it. Read-only, so no hover or pointer cursor —
+   nothing here should look clickable when the task row is. */
+.obj-steps {
+  display: flex; flex-direction: column; gap: 1px;
+  margin: 0 0 4px 15px; padding-left: 10px;
+  border-left: 2px solid var(--border-strong);
+}
+.obj-step {
+  display: flex; align-items: center; gap: 7px;
+  padding: 2px 4px; font-size: 11.5px; color: var(--chip-text);
+}
+.obj-step-name {
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.obj-step.done .obj-step-name { text-decoration: line-through; }
+
+.obj-step-box {
+  width: 11px; height: 11px; flex-shrink: 0; border-radius: 3px;
+  border: 2px solid var(--chip-text); position: relative; background: var(--bg);
+}
+.obj-step-box.done { background: var(--chip-text); }
+.obj-step-box.done::after {
+  content: "✓"; position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--bg); font-size: 8px; font-weight: 700; line-height: 1;
+}
+
 .obj-empty { font-size: 12px; color: var(--chip-text); font-style: italic; padding: 4px 6px 6px; }
 .obj-more { font-size: 11px; color: var(--chip-text); padding: 5px 12px 2px; }
 .obj-more.hidden { display: none; }

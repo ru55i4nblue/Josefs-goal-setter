@@ -7,6 +7,10 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [2.8.0] — 2026-08-15
+
 ### Added
 
 - **Switch project from the Current objective widget.** Click the project name
@@ -16,7 +20,6 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - **The widget is colour-coded to its project's category** — the card's left
   edge and the progress fill both take the category colour, the way a Big
   Picture card does.
-
 - **The Current objective widget lists each task's steps beneath it**, always and
   in full, as an indented checklist matching the one inside a project. Ticked
   steps show struck through. They're read-only here — a step carries no weight,
@@ -462,7 +465,8 @@ First public release. Windows installer and macOS disk images published from CI.
 - Recurring tasks showing as already completed when viewing a future day.
 - macOS CI builds failing while attempting to publish a release.
 
-[Unreleased]: https://github.com/ru55i4nblue/Josefs-goal-setter/compare/v2.7.1...HEAD
+[Unreleased]: https://github.com/ru55i4nblue/Josefs-goal-setter/compare/v2.8.0...HEAD
+[2.8.0]: https://github.com/ru55i4nblue/Josefs-goal-setter/compare/v2.7.1...v2.8.0
 [2.7.1]: https://github.com/ru55i4nblue/Josefs-goal-setter/compare/v2.7.0...v2.7.1
 [2.7.0]: https://github.com/ru55i4nblue/Josefs-goal-setter/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/ru55i4nblue/Josefs-goal-setter/compare/v2.5.0...v2.6.0

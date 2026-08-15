@@ -1025,7 +1025,10 @@ function pushWidget() {
 // Finished ones are dropped rather than shown struck through — the point is what
 // to do next, not what's been done.
 function objectivePayload() {
-  const p = getProject(state.settings.objectiveProject);
+  // the chosen project may since have been deleted, or never have been chosen at all
+  // if Settings was never opened — fall back rather than blank out, as widget mode
+  // 'single' does for its category
+  const p = getProject(state.settings.objectiveProject) || (state.projects || [])[0];
   if (!p) return { theme: state.theme, project: null, tasks: [], remaining: 0 };
   const n = Math.max(OBJECTIVE_MIN,
     Math.min(OBJECTIVE_MAX, Math.round(Number(state.settings.objectiveCount)) || 4));

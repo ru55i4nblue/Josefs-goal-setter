@@ -387,7 +387,16 @@ function renderWidgetSettings() {
       o.value = p.id; o.textContent = p.name;
       op.appendChild(o);
     });
-    op.value = state.settings.objectiveProject || state.projects[0].id;
+    // The select must never *show* a project the state doesn't hold. Picking the
+    // option that already looks chosen fires no change event, so a display-only
+    // fallback would leave objectiveProject null and the widget empty for good.
+    // migrate() normalises this at load; a project created since then can't rely on it.
+    if (!getProject(state.settings.objectiveProject)) {
+      state.settings.objectiveProject = state.projects[0].id;
+      save();
+      pushObjective();
+    }
+    op.value = state.settings.objectiveProject;
   }
   $('#setObjectiveCount').value = state.settings.objectiveCount || 4;
 

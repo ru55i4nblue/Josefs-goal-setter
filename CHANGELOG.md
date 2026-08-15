@@ -9,6 +9,14 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ### Fixed
 
+- **The Current objective widget stayed empty.** Settings showed a project as
+  chosen while the setting behind it was still unset, so the widget was told
+  there was no project and rendered its empty state. Because the dropdown
+  already looked right, picking that project changed nothing — there was no
+  change to make. It now adopts the project it displays, and the widget falls
+  back to your first project rather than blanking if the chosen one is deleted
+  or Settings was never opened.
+
 - **The phone no longer offers Widget settings it can't use.** The Widget card —
   layout picker, category selector and shortlist length — configures a sticky
   widget that only exists on the desktop app, so it now hides on the PWA

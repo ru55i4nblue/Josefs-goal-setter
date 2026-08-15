@@ -1,6 +1,6 @@
 {
   "name": "goal-setter",
-  "version": "2.7.0",
+  "version": "2.7.1",
   "description": "Weighted goal & checklist tracker with satisfying progress bars",
   "main": "main.js",
   "scripts": {

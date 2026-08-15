@@ -12,7 +12,7 @@ macOS) that is also a PWA for phones, with optional live sync via Supabase.
 - **Project folder:** `C:\Users\ru55i\Documents\Claude Files\Goal Setter`
 - **GitHub:** https://github.com/ru55i4nblue/Josefs-goal-setter (public)
   - ⚠️ The repo was **renamed** from `goal-setter`; old URLs still redirect.
-- **Current version:** 2.7.0 (tag `v2.7.0`) · **save format v4**
+- **Current version:** 2.7.1 (tag `v2.7.1`) · **save format v4**
 - **Stack:** vanilla HTML/CSS/JS — no framework, no build step — wrapped in Electron.
 
 ## The idea
@@ -193,18 +193,15 @@ version's CHANGELOG section. `build-mac.yml` is manual-only.
 
 **macOS packaging:** arm64 ships as `.dmg`, Intel as `.zip` — electron-builder's DMG step
 fails cross-building x64 on Apple Silicon runners. `build/afterPack.js` ad-hoc signs the
-bundle. This has now built cleanly for 2.3.0 through 2.7.0; treat it as solved.
+bundle. This has now built cleanly for 2.3.0 through 2.7.1; treat it as solved.
 
 ## Open items
 
-1. **Cut a 2.7.1.** Anyone who installed 2.7.0 from a GitHub Release has no Current
-   objective widget at all — the files weren't in the installer. It's fixed in the tree
-   but only a release gets it to them. Local `update.bat` installs were never affected.
-2. **Older releases** (v1.0.0, v2.0.0, v2.1.0) still have generic notes. Backfill with
+1. **Older releases** (v1.0.0, v2.0.0, v2.1.0) still have generic notes. Backfill with
    `node scripts/release-notes.js v2.1.0` and paste into each release's Edit box.
-3. **`gh` is not installed**, so releases can't be watched or PRs opened from the CLI.
+2. **`gh` is not installed**, so releases can't be watched or PRs opened from the CLI.
    The GitHub REST API over `Invoke-RestMethod` works fine unauthenticated for reads.
-4. A **"Blocked" view** (weight-sized tetris blocks) was built, reviewed and **scrapped**.
+3. A **"Blocked" view** (weight-sized tetris blocks) was built, reviewed and **scrapped**.
    Don't reintroduce unless asked.
 
 **Desktop-only settings** are hidden by one list in `applyPlatformUI()`

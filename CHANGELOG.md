@@ -17,6 +17,18 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
   back to your first project rather than blanking if the chosen one is deleted
   or Settings was never opened.
 
+- **The Current objective widget was missing entirely from the installers.** The
+  2.7.0 downloads were built without `objective.html`, `objective.js` and
+  `objective.css`, so on a released build the widget had nothing to load and
+  opened as an empty window. Only builds made locally from source were complete.
+  The packaging list now includes them, along with the app icons the page and
+  manifest reference, and `npm run dist` refuses to build if anything the app
+  loads has been left off the list again.
+
+- **The phone no longer shows an empty "Daily log" card.** Its controls were all
+  hidden individually, leaving a heading with nothing beneath it; the whole card
+  now hides, like the other desktop-only ones.
+
 - **The phone no longer offers Widget settings it can't use.** The Widget card —
   layout picker, category selector and shortlist length — configures a sticky
   widget that only exists on the desktop app, so it now hides on the PWA

@@ -171,6 +171,22 @@ npm run build:web         # just assemble www/
 node scripts/release-notes.js v2.7.0   # preview a release's notes
 ```
 
+**Two different packagers, and the difference bites.** `update.bat` runs
+`npm run package` (**electron-packager**), which ships the whole folder minus an ignore
+list. Releases run `npm run dist` / `dist:mac` (**electron-builder**), governed by the
+`build.files` **whitelist** in `package.json`. A file missing from that whitelist is
+absent from the release installer while working perfectly in every local build — which
+is how 2.7.0 shipped without `objective.*` and nobody noticed. `npm run check:files`
+([scripts/check-package-files.js](scripts/check-package-files.js)) walks every
+`<script src>`/`<link href>` in the packaged HTML, the manifest's icons and main.js's
+`loadFile`/preload paths, and fails the build if any of them is off the list. It runs
+automatically as part of `dist` and `dist:mac`. **Add new runtime files to `build.files`.**
+
+Note the local `electron-builder` run can't finish NSIS packaging on this machine —
+extracting winCodeSign needs symlink privileges — but it writes `app.asar` first, so
+`npx electron-builder --win --dir` plus an asar read is still a valid way to check what
+would ship. CI runners are unaffected.
+
 **Releases:** push a `v*` tag → `.github/workflows/release.yml` builds the Windows
 installer + macOS artifacts and publishes a GitHub Release whose body comes from that
 version's CHANGELOG section. `build-mac.yml` is manual-only.
@@ -181,10 +197,9 @@ bundle. This has now built cleanly for 2.3.0 through 2.7.0; treat it as solved.
 
 ## Open items
 
-1. **The "Daily log" settings card is an empty stub on mobile.** Its three controls are
-   hidden individually by `applyPlatformUI()`, leaving a 70px card with nothing under the
-   heading. Same bug class as the Widget card — give the `<section>` an id and hide the
-   whole card instead. Left alone because it wasn't in scope, not because it's fine.
+1. **Cut a 2.7.1.** Anyone who installed 2.7.0 from a GitHub Release has no Current
+   objective widget at all — the files weren't in the installer. It's fixed in the tree
+   but only a release gets it to them. Local `update.bat` installs were never affected.
 2. **Older releases** (v1.0.0, v2.0.0, v2.1.0) still have generic notes. Backfill with
    `node scripts/release-notes.js v2.1.0` and paste into each release's Edit box.
 3. **`gh` is not installed**, so releases can't be watched or PRs opened from the CLI.
@@ -194,10 +209,27 @@ bundle. This has now built cleanly for 2.3.0 through 2.7.0; treat it as solved.
 
 **Desktop-only settings** are hidden by one list in `applyPlatformUI()`
 ([renderer.js](renderer.js)), keyed off `window.goalAPI` being absent — which is exactly
-the PWA condition, so loading `index.html` in a plain browser *is* the mobile case. Prefer
-hiding a whole card (`#objectiveCard`, `#widgetCard`) over hiding its controls one by one,
-and tag its heading with `<span class="desktop-only-tag">desktop only</span>`. `sw.js` is
-network-first, so a UI change needs no `CACHE` bump to reach phones.
+the PWA condition, so loading `index.html` in a plain browser *is* the mobile case. Hide a
+whole card (`#objectiveCard`, `#widgetCard`, `#dailyLogCard`) rather than its controls one
+by one — doing the latter leaves an empty heading behind — and tag it with
+`<span class="desktop-only-tag">desktop only</span>`. `sw.js` is network-first, so a UI
+change needs no `CACHE` bump to reach phones.
+
+**A UI control must never display a value the state doesn't hold.** `renderSettings()` used
+to set the objective project dropdown's `value` to a fallback without writing it back, so
+the select showed a project that `settings.objectiveProject` didn't hold — and since the
+option already looked chosen, no `change` event was ever fired to correct it and the widget
+stayed empty for good. If you catch yourself writing `el.value = state.x || fallback`, write
+the fallback into the state too.
+
+**Testing the widgets end-to-end** is worth the trouble, since neither the static preview
+nor Electron alone covers the IPC seam. A throwaway entry script at the project root that
+does `require('./main.js')`, waits for `app.whenReady()`, then drives
+`mainWindow.webContents.executeJavaScript()` to seed state and
+`BrowserWindow.getAllWindows()` to find the widget window and read its DOM back, works
+well. Run it with `--user-data-dir` pointed somewhere disposable so it can't touch the real
+save. Keep it at the root — `loadFile()` resolves against the app path, so a harness under
+`scripts/` breaks it.
 
 ## Environment gotchas (learned the hard way)
 

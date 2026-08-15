@@ -1326,8 +1326,11 @@ function applyTheme() {
 }
 function applyPlatformUI() {
   if (!window.goalAPI) {
+    // whole cards where every control is desktop-only, individual controls where
+    // the card also holds things the phone can use
     ['#startupToggle', '#exportNowBtn', '#exportGcalBtn', '#logTimeRow',
-      '#widgetToggle', '#objectiveToggle', '#objectiveCard', '#widgetCard']
+      '#widgetToggle', '#objectiveToggle',
+      '#objectiveCard', '#widgetCard', '#dailyLogCard']
       .forEach((s) => { const e = $(s); if (e) e.classList.add('hidden'); });
   }
 }

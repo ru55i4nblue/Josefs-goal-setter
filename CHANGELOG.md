@@ -9,12 +9,29 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ### Added
 
+- **Switch project from the Current objective widget.** Click the project name
+  for a list of your projects, each with its category's colour, and pick one.
+  The choice goes straight back to the app and Settings follows it. With only
+  one project the name stays inert rather than offering a menu of one.
+- **The widget is colour-coded to its project's category** — the card's left
+  edge and the progress fill both take the category colour, the way a Big
+  Picture card does.
+
 - **The Current objective widget lists each task's steps beneath it**, always and
   in full, as an indented checklist matching the one inside a project. Ticked
   steps show struck through. They're read-only here — a step carries no weight,
   so ticking one from the widget would move no bar; the task above it is what you
   check off. The widget grows to fit and is now bounded by the height of the
   screen rather than a flat 600px, so a long checklist isn't clipped.
+
+### Fixed
+
+- **"A JavaScript error occurred in the main process" when closing a widget
+  after closing the app.** Closing the main window doesn't quit while a widget
+  is still up, but the app kept pointing at the closed window and tried to
+  notify it, throwing `Object has been destroyed`. Closing either widget in that
+  state is now silent, and the widget's ⇱ button reopens the app instead of
+  doing nothing.
 
 ## [2.7.1] — 2026-08-15
 

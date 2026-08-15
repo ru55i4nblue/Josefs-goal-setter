@@ -59,6 +59,17 @@ function createWindow() {
 
   mainWindow.setMenuBarVisibility(false);
   mainWindow.loadFile('index.html');
+  // Closing the main window doesn't quit while a widget is still open, and the
+  // variable would otherwise keep pointing at a destroyed window — every later
+  // .webContents on it throws "Object has been destroyed" out of an IPC handler,
+  // which Electron reports as an uncaught main-process exception.
+  mainWindow.on('closed', () => { mainWindow = null; });
+}
+
+// The main window may be gone while the widgets live on, so nothing may touch
+// mainWindow without going through this.
+function liveMain() {
+  return mainWindow && !mainWindow.isDestroyed() ? mainWindow : null;
 }
 
 app.whenReady().then(() => {
@@ -173,17 +184,28 @@ ipcMain.on('widget:push', (_e, { id, payload } = {}) => {
 // a widget's close button -> hide + tell the main app so its toggle stays in sync
 ipcMain.on('widget:close', (_e, { id } = {}) => {
   if (widgetWins[id]) widgetWins[id].close();
-  if (mainWindow) mainWindow.webContents.send('widget:closed', { id });
+  const w = liveMain();
+  if (w) w.webContents.send('widget:closed', { id });
 });
 
-// widget -> bring the main app forward
+// widget -> bring the main app forward, reopening it if it was closed while the
+// widget stayed up (otherwise the button is dead and the app is unreachable)
 ipcMain.on('widget:open-app', () => {
-  if (mainWindow) { mainWindow.show(); mainWindow.focus(); }
+  const w = liveMain();
+  if (w) { w.show(); w.focus(); } else createWindow();
 });
 
 // widget -> toggle a task done; hand it to the main app to update state
 ipcMain.on('widget:toggle', (_e, payload) => {
-  if (mainWindow) mainWindow.webContents.send('widget:toggle', payload);
+  const w = liveMain();
+  if (w) w.webContents.send('widget:toggle', payload);
+});
+
+// widget -> switch which project the objective widget is following. Only the
+// renderer holds state, so this is a no-op while the main window is closed.
+ipcMain.on('objective:set-project', (_e, { id } = {}) => {
+  const w = liveMain();
+  if (w) w.webContents.send('objective:set-project', { id });
 });
 
 // widget -> resize its window to hug the content height

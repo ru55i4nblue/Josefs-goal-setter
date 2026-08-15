@@ -1,14 +1,40 @@
 /* Current objective widget. Rides on widget.css for the card, header buttons and
    the four theme token blocks; this only adds the objective-specific parts. */
 
-.obj-card { padding-bottom: 8px; }
+/* The left edge carries the project's category colour, the way a Big Picture
+   card does in the app. --c comes from the tint-* class applied to this card. */
+.obj-card { padding-bottom: 8px; border-left: 4px solid var(--c, var(--border)); }
 
 .obj-project {
   display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
   padding: 9px 10px 5px;
 }
+/* a button so it can open the picker, but it has to keep reading as the title */
 .obj-name {
   font-size: 14px; font-weight: 700; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  background: none; border: 0; padding: 0; margin: 0;
+  font-family: inherit; text-align: left; min-width: 0; cursor: default;
+}
+.obj-name.switchable { cursor: pointer; }
+.obj-name.switchable::after { content: " ▾"; font-size: 10px; color: var(--chip-text); }
+.obj-name.switchable:hover { color: var(--accent-text); }
+
+/* Project switcher, opened from the title. Sits between the title and the bar
+   so the card grows downward and the header stays put. */
+.obj-picker { display: flex; flex-direction: column; gap: 1px; padding: 2px 6px 4px; }
+.obj-picker.hidden { display: none; }
+.obj-pick {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  background: none; border: 0; border-radius: 6px; padding: 5px 6px;
+  font-family: inherit; font-size: 12.5px; text-align: left;
+  color: var(--text); cursor: pointer;
+}
+.obj-pick:hover { background: var(--track); }
+.obj-pick.current { background: var(--track); font-weight: 700; }
+.obj-pick-dot { flex-shrink: 0; }
+.obj-pick-name {
+  flex: 1; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .obj-pct {
@@ -21,7 +47,7 @@
   background: var(--track); overflow: hidden;
 }
 .obj-fill {
-  height: 100%; border-radius: 999px; background: var(--accent-text);
+  height: 100%; border-radius: 999px; background: var(--c, var(--accent-text));
   transition: width .45s cubic-bezier(.22,1,.36,1);
 }
 

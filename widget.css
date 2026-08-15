@@ -131,6 +131,41 @@ body.dark .dot.purple { box-shadow: 0 0 6px rgba(139,92,246,.5); }
 body.dark .dot.gray { background: var(--text-faint); }
 body.dark .dot.amber { background: #f59e0b; }
 body.dark .dot.teal { background: #14b8a6; }
+
+/* --c is the category's identity colour: the objective widget wears its
+   project's on the card's left edge and its progress fill. Both are fills, never
+   text — but the fill sits on --track, not on the card, and a mid-tone hue on a
+   mid-grey track is the tightest contrast in the app. Measured across all eight
+   colours in all four themes; every value here clears 3:1 against its own
+   theme's track with margin, which is why these differ from the styles.css
+   tints (whose bars sit on a different track). Adjust one, re-measure all.
+   Specificity, not source order, decides between the families. Space carries
+   `dark`, so it inherits that block — its track is darker still, so those
+   values only gain contrast there. */
+.tint-purple { --c: #8b5cf6; }   /* 3.48 */
+.tint-neon   { --c: #0f8f50; }   /* 3.41 */
+.tint-blue   { --c: #397dec; }   /* 3.25 */
+.tint-amber  { --c: #a86a04; }   /* 3.65 */
+.tint-pink   { --c: #de4490; }   /* 3.25 */
+.tint-teal   { --c: #0d7d70; }   /* 4.13 */
+.tint-red    { --c: #ea4343; }   /* 3.21 */
+.tint-gray   { --c: #7b7a77; }   /* 3.53 */
+
+body.dark .tint-purple { --c: #9164f6; }   /* 3.23 — #8b5cf6 lands at 2.98 here */
+body.dark .tint-neon   { --c: #2bff88; }
+body.dark .tint-blue   { --c: #3b82f6; }
+body.dark .tint-amber  { --c: #f59e0b; }
+body.dark .tint-pink   { --c: #ec4899; }
+body.dark .tint-teal   { --c: #14b8a6; }
+body.dark .tint-red    { --c: #ef4444; }
+body.dark .tint-gray   { --c: #9b9a97; }
+
+body.pond .tint-neon { --c: #4e8939; }
+body.pond .tint-blue { --c: #3678e2; }
+body.pond .tint-pink { --c: #d4418a; }
+body.pond .tint-teal { --c: #0f6f63; }
+body.pond .tint-red  { --c: #e14040; }
+body.pond .tint-gray { --c: #5f7d76; }
 .pct { margin-left: auto; font-variant-numeric: tabular-nums; }
 /* the merged list spans categories, so it counts rather than showing a percentage */
 .sec-note { margin-left: auto; color: var(--chip-text); font-variant-numeric: tabular-nums; }

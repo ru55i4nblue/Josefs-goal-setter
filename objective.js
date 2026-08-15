@@ -1,5 +1,58 @@
 const $ = (s) => document.querySelector(s);
 
+let lastData = null;
+
+// The window hugs its content, so anything that changes the card's height has
+// to ask for a resize — opening the project picker included.
+function fit() {
+  if (window.widgetAPI && window.widgetAPI.resize) {
+    window.widgetAPI.resize(document.querySelector('.card').offsetHeight + 12);
+  }
+}
+
+// Switch project without opening the app. The list rides along in every payload,
+// so this needs no round trip to draw — only to commit the choice.
+function buildPicker(d) {
+  const host = $('#objPicker');
+  const list = d.projects || [];
+  host.innerHTML = '';
+  // nothing to switch between: leave the name inert rather than offering a
+  // menu of one
+  $('#objName').classList.toggle('switchable', list.length > 1);
+  if (list.length < 2) { host.classList.add('hidden'); return; }
+
+  list.forEach((p) => {
+    const b = document.createElement('button');
+    b.className = 'obj-pick' + (p.id === d.projectId ? ' current' : '');
+
+    const dot = document.createElement('span');
+    dot.className = 'obj-pick-dot dot ' + (p.color || 'gray');
+
+    const name = document.createElement('span');
+    name.className = 'obj-pick-name';
+    name.textContent = p.name;
+
+    b.appendChild(dot);
+    b.appendChild(name);
+    b.onclick = () => {
+      host.classList.add('hidden');
+      if (p.id !== d.projectId && window.widgetAPI && window.widgetAPI.setProject) {
+        window.widgetAPI.setProject(p.id);
+      }
+      fit();
+    };
+    host.appendChild(b);
+  });
+}
+
+function togglePicker(force) {
+  const host = $('#objPicker');
+  if (!host.children.length) return;
+  const hide = force === undefined ? !host.classList.contains('hidden') : force;
+  host.classList.toggle('hidden', hide);
+  fit();
+}
+
 function row(t) {
   const el = document.createElement('div');
   el.className = 'obj-row clickable' + (t.done ? ' done' : '');
@@ -60,9 +113,17 @@ function applyData(d) {
   document.body.classList.toggle('pond', d.theme === 'pond');
   document.body.classList.toggle('space', d.theme === 'space');
 
+  // the project's category colour drives --c, which the fill and the card's
+  // edge read from; text keeps its own tokens, since a fill colour used as text
+  // is exactly how this project's contrast bugs have always started
+  const card = document.querySelector('.card');
+  card.className = 'card obj-card' + (d.color ? ' tint-' + d.color : '');
+
+  lastData = d;
   $('#objName').textContent = d.project || 'No project chosen';
   $('#objPct').textContent = typeof d.pct === 'number' ? d.pct + '%' : '';
   $('#objFill').style.width = (typeof d.pct === 'number' ? d.pct : 0) + '%';
+  buildPicker(d);
 
   const host = $('#objList');
   host.innerHTML = '';
@@ -84,11 +145,16 @@ function applyData(d) {
   $('#objMore').textContent = d.remaining > 0 ? `+${d.remaining} more` : '';
   $('#objMore').classList.toggle('hidden', !(d.remaining > 0));
 
-  if (window.widgetAPI && window.widgetAPI.resize) {
-    window.widgetAPI.resize(document.querySelector('.card').offsetHeight + 12);
-  }
+  fit();
 }
 window.__applyObjectiveData = applyData;   // exposed for preview testing
+
+$('#objName').onclick = () => togglePicker();
+document.addEventListener('click', (e) => {
+  if (e.target.closest('#objName') || e.target.closest('#objPicker')) return;
+  togglePicker(true);
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') togglePicker(true); });
 
 if (window.widgetAPI) {
   window.widgetAPI.onData(applyData);

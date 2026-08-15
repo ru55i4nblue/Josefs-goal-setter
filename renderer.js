@@ -1029,7 +1029,11 @@ function objectivePayload() {
   // if Settings was never opened — fall back rather than blank out, as widget mode
   // 'single' does for its category
   const p = getProject(state.settings.objectiveProject) || (state.projects || [])[0];
-  if (!p) return { theme: state.theme, project: null, tasks: [], remaining: 0 };
+  // the whole list travels with every push so the widget can offer a switcher
+  // without a round trip; each carries its own colour for the picker's dots
+  const catColor = (x) => ((getCat(x.categoryId) || {}).color || 'gray');
+  const projects = (state.projects || []).map((x) => ({ id: x.id, name: x.name, color: catColor(x) }));
+  if (!p) return { theme: state.theme, project: null, projects, tasks: [], remaining: 0 };
   const n = Math.max(OBJECTIVE_MIN,
     Math.min(OBJECTIVE_MAX, Math.round(Number(state.settings.objectiveCount)) || 4));
   const dateKey = todayKey();
@@ -1039,6 +1043,9 @@ function objectivePayload() {
   return {
     theme: state.theme,
     project: p.name,
+    projectId: p.id,
+    color: catColor(p),          // the project's category colour, for the widget's tint
+    projects,
     pct: Math.round(projectProgress(p).pct),
     remaining: Math.max(0, open.length - shown.length),
     tasks: shown.map((t) => ({

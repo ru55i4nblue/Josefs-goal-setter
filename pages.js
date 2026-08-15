@@ -1234,6 +1234,14 @@ function wire() {
   if (window.goalAPI && window.goalAPI.onWidgetToggle) {
     window.goalAPI.onWidgetToggle(({ id }) => toggleTask(id));
   }
+  // the objective widget's own project picker
+  if (window.goalAPI && window.goalAPI.onObjectiveProject) {
+    window.goalAPI.onObjectiveProject(({ id }) => {
+      if (!getProject(id)) return;
+      state.settings.objectiveProject = id;
+      save(); pushObjective(); renderSettings();
+    });
+  }
   if (window.goalAPI && window.goalAPI.setWidget) {
     if (state.widgetOpen) window.goalAPI.setWidget('all', true).then(() => pushWidget());
     if (state.objectiveOpen) window.goalAPI.setWidget('objective', true).then(() => pushObjective());

@@ -10,5 +10,6 @@ contextBridge.exposeInMainWorld('goalAPI', {
   setWidget: (id, open) => ipcRenderer.invoke('widget:set', { id, open }),
   pushWidget: (id, payload) => ipcRenderer.send('widget:push', { id, payload }),
   onWidgetClosed: (cb) => ipcRenderer.on('widget:closed', (_e, info) => cb(info || {})),
-  onWidgetToggle: (cb) => ipcRenderer.on('widget:toggle', (_e, payload) => cb(payload))
+  onWidgetToggle: (cb) => ipcRenderer.on('widget:toggle', (_e, payload) => cb(payload)),
+  onObjectiveProject: (cb) => ipcRenderer.on('objective:set-project', (_e, info) => cb(info || {}))
 });

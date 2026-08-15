@@ -11,5 +11,6 @@ contextBridge.exposeInMainWorld('widgetAPI', {
   close: () => ipcRenderer.send('widget:close', { id: WIDGET_ID }),
   openApp: () => ipcRenderer.send('widget:open-app'),
   resize: (height) => ipcRenderer.send('widget:resize', { id: WIDGET_ID, height }),
-  toggle: (kind, id) => ipcRenderer.send('widget:toggle', { kind, id })
+  toggle: (kind, id) => ipcRenderer.send('widget:toggle', { kind, id }),
+  setProject: (id) => ipcRenderer.send('objective:set-project', { id })
 });

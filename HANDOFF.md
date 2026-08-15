@@ -213,12 +213,27 @@ by one — doing the latter leaves an empty heading behind — and tag it with
 change needs no `CACHE` bump to reach phones.
 
 **The Current objective widget** shows one project's next few outstanding sub-tasks, each
-with its steps listed under it in full. How many sub-tasks appear is Settings → Current
-objective → **Sub-tasks shown** (`settings.objectiveCount`, clamped 1–10 by
-`OBJECTIVE_MIN/MAX` in model.js). Steps are deliberately read-only there: they carry no
-weight, so ticking one would move no bar. `widget.css` holds the widget's own copy of the
-theme tokens — it is *not* `styles.css`, so a token that exists in the app may not exist
-here; check before using one (`--border-strong` had to be added for the step rule).
+with its steps listed under it in full, tinted with the project's category colour. How
+many sub-tasks appear is Settings → Current objective → **Sub-tasks shown**
+(`settings.objectiveCount`, clamped 1–10 by `OBJECTIVE_MIN/MAX` in model.js). Clicking the
+project name opens a picker — the full project list rides along in every payload, so it
+draws without a round trip and only the chosen id goes back
+(`objective:set-project`). Steps are deliberately read-only: they carry no weight, so
+ticking one would move no bar. `widget.css` holds the widget's own copy of the theme
+tokens — it is *not* `styles.css`, so a token that exists in the app may not exist here;
+check before using one (`--border-strong` had to be added for the step rule).
+
+**The widget's `tint-*` values are not the app's.** A category colour there is a fill on
+`--track`, a mid-grey, which is the tightest contrast pairing in the project — five of the
+32 colour/theme combinations failed 3:1 on the styles.css values. `widget.css` carries its
+own measured set with each family stated explicitly. Change one and re-measure all 32.
+
+**Only the renderer holds state, and the main window can be closed while a widget lives
+on.** Nothing in main.js may touch `mainWindow` directly — go through `liveMain()`, which
+returns null once it's destroyed. Reaching a destroyed window from an IPC handler throws
+`Object has been destroyed` as an uncaught main-process exception, which Electron shows as
+a modal error dialog. Anything routed to the renderer (task toggles, the project picker) is
+simply a no-op in that state; `widget:open-app` recreates the window instead.
 
 **A UI control must never display a value the state doesn't hold.** `renderSettings()` used
 to set the objective project dropdown's `value` to a fallback without writing it back, so

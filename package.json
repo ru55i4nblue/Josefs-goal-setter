@@ -7,8 +7,9 @@
     "start": "electron .",
     "icon": "node build-icon.js && node build-ico.js",
     "package": "electron-packager . \"Goal Setter\" --platform=win32 --arch=x64 --icon=build/icon.ico --out=dist --overwrite --ignore=\"(dist|www|\\.claude|electron-.*\\.log|build-ico?n?\\.js)\"",
-    "dist": "electron-builder --win --publish never",
-    "dist:mac": "electron-builder --mac --publish never",
+    "check:files": "node scripts/check-package-files.js",
+    "dist": "npm run check:files && electron-builder --win --publish never",
+    "dist:mac": "npm run check:files && electron-builder --mac --publish never",
     "build:web": "node build-web.js"
   },
   "author": "",
@@ -37,6 +38,9 @@
       "widget.js",
       "widget.css",
       "widget-preload.js",
+      "objective.html",
+      "objective.js",
+      "objective.css",
       "store.js",
       "supabase-config.js",
       "supabase-backend.js",
@@ -44,7 +48,10 @@
       "sw.js",
       "vendor/**",
       "build/icon.png",
-      "build/icon-1024.png"
+      "build/icon-1024.png",
+      "build/icon-180.png",
+      "build/icon-192.png",
+      "build/icon-512.png"
     ],
     "win": {
       "target": [

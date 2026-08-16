@@ -7,6 +7,10 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [2.9.0] — 2026-08-16
+
 ### Added
 
 - **Order the Big Picture's projects.** A switch beside ＋ New project sorts the
@@ -481,7 +485,8 @@ First public release. Windows installer and macOS disk images published from CI.
 - Recurring tasks showing as already completed when viewing a future day.
 - macOS CI builds failing while attempting to publish a release.
 
-[Unreleased]: https://github.com/ru55i4nblue/Josefs-goal-setter/compare/v2.8.0...HEAD
+[Unreleased]: https://github.com/ru55i4nblue/Josefs-goal-setter/compare/v2.9.0...HEAD
+[2.9.0]: https://github.com/ru55i4nblue/Josefs-goal-setter/compare/v2.8.0...v2.9.0
 [2.8.0]: https://github.com/ru55i4nblue/Josefs-goal-setter/compare/v2.7.1...v2.8.0
 [2.7.1]: https://github.com/ru55i4nblue/Josefs-goal-setter/compare/v2.7.0...v2.7.1
 [2.7.0]: https://github.com/ru55i4nblue/Josefs-goal-setter/compare/v2.6.0...v2.7.0

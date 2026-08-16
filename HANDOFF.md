@@ -12,7 +12,7 @@ macOS) that is also a PWA for phones, with optional live sync via Supabase.
 - **Project folder:** `C:\Users\ru55i\Documents\Claude Files\Goal Setter`
 - **GitHub:** https://github.com/ru55i4nblue/Josefs-goal-setter (public)
   - ⚠️ The repo was **renamed** from `goal-setter`; old URLs still redirect.
-- **Current version:** 2.8.0 (tag `v2.8.0`) · **save format v4**
+- **Current version:** 2.9.0 (tag `v2.9.0`) · **save format v4**
 - **Stack:** vanilla HTML/CSS/JS — no framework, no build step — wrapped in Electron.
 
 ## The idea
@@ -193,7 +193,7 @@ version's CHANGELOG section. `build-mac.yml` is manual-only.
 
 **macOS packaging:** arm64 ships as `.dmg`, Intel as `.zip` — electron-builder's DMG step
 fails cross-building x64 on Apple Silicon runners. `build/afterPack.js` ad-hoc signs the
-bundle. This has now built cleanly for 2.3.0 through 2.8.0; treat it as solved.
+bundle. This has now built cleanly for 2.3.0 through 2.9.0; treat it as solved.
 
 ## Open items
 

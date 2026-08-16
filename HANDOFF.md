@@ -235,6 +235,15 @@ returns null once it's destroyed. Reaching a destroyed window from an IPC handle
 a modal error dialog. Anything routed to the renderer (task toggles, the project picker) is
 simply a no-op in that state; `widget:open-app` recreates the window instead.
 
+**Project ordering** lives in `sortedProjects()` (model.js), driven by
+`settings.projectSort` — `manual` | `date` | `category`, whitelisted by `PROJECT_SORTS`.
+Every surface that lists projects goes through it: the Big Picture grid, the objective
+widget's picker and the Settings dropdown. Ties always fall back to manual order so the
+list can't wobble between renders. The `.sort-btn` class deliberately is **not**
+`.view-btn` — pages.js binds every `.view-btn` on the page to `state.taskmasterView`, so
+reusing the class would have silently broken the Taskmaster switch; they share the CSS
+only.
+
 **A UI control must never display a value the state doesn't hold.** `renderSettings()` used
 to set the objective project dropdown's `value` to a fallback without writing it back, so
 the select showed a project that `settings.objectiveProject` didn't hold — and since the

@@ -382,7 +382,7 @@ function renderWidgetSettings() {
     op.disabled = true;
   } else {
     op.disabled = false;
-    state.projects.forEach((p) => {
+    sortedProjects().forEach((p) => {
       const o = document.createElement('option');
       o.value = p.id; o.textContent = p.name;
       op.appendChild(o);
@@ -1097,6 +1097,14 @@ function wire() {
   $('#tmAddBtn').onclick = () => openModal({ categoryId: 'daily' });
   document.querySelectorAll('.view-btn').forEach((b) => {
     b.onclick = () => { state.taskmasterView = b.dataset.view; save(); renderTaskArea(); };
+  });
+
+  /* ---- big picture: how the project cards are ordered ---- */
+  document.querySelectorAll('.sort-btn').forEach((b) => {
+    b.onclick = () => {
+      state.settings.projectSort = b.dataset.sort;
+      save(); renderBigPicture(); pushObjective();
+    };
   });
 
   /* ---- calendar week nav ---- */

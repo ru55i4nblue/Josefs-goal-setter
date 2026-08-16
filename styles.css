@@ -475,6 +475,7 @@ body.dark .checkbox.weekly.checked::after { color: #08130c; }
 /* ===================== BIG PICTURE ===================== */
 .page-bigpicture { padding: 26px 36px; overflow-y: auto; }
 .bp-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.bp-header-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .bp-body { margin-top: 4px; }
 .bp-grid {
   display: grid; gap: 16px;
@@ -985,12 +986,17 @@ body.dark .checkbox.neon.checked::after { color: #08130c; }
   display: inline-flex; background: var(--track);
   border-radius: 8px; padding: 2px;
 }
-.view-btn {
+/* .sort-btn is the Big Picture's project ordering; it wears the same segmented
+   look but must stay a separate class — every .view-btn is wired to the
+   taskmaster's view switch. */
+.view-btn, .sort-btn {
   background: none; border: none; cursor: pointer; font-family: inherit;
-  font-size: 12.5px; font-weight: 600; color: var(--text-soft);
+  /* --chip-text, not --text-soft: the idle label sits on --track, where
+     --text-soft measured 3.68:1 in the light theme, under the 4.5 floor */
+  font-size: 12.5px; font-weight: 600; color: var(--chip-text);
   padding: 5px 13px; border-radius: 6px;
 }
-.view-btn.active { background: var(--bg); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.1); }
+.view-btn.active, .sort-btn.active { background: var(--bg); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.1); }
 .btn-small { padding: 6px 12px !important; font-size: 12.5px !important; }
 
 /* due-today callout inside each category box */

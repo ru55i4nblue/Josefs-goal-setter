@@ -7,7 +7,23 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- **Order the Big Picture's projects.** A switch beside ＋ New project sorts the
+  cards **Manual** (the order you added them), **Date** or **Category**. Date
+  uses each project's own deadline, falling back to its last sub-task, with
+  undated projects last — the same way undated work sinks everywhere else.
+  Category follows your category column order. The choice sticks, and the
+  widget's project picker and the Settings dropdown follow the same order.
+
+### Fixed
+
+- **A corrupted `settings` value could lock the app read-only.** If `settings`
+  arrived as something other than an object — from a damaged save or an odd sync
+  payload — loading threw, which by design blocks every write to protect your
+  data. It's now replaced with defaults instead.
+- The idle label on the Taskmaster and Big Picture view switches was below the
+  contrast floor in the light theme (3.68:1, needs 4.5); it now reads 6.32:1.
 
 ## [2.8.0] — 2026-08-15
 

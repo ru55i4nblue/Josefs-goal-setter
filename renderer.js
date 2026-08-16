@@ -665,7 +665,14 @@ function renderBigPicture() {
   const host = $('#bigPictureBody');
   if (!host) return;
   host.innerHTML = '';
-  const projects = (state.projects || []);
+  const projects = sortedProjects();
+
+  const mode = (state.settings && state.settings.projectSort) || 'manual';
+  document.querySelectorAll('.sort-btn').forEach((b) =>
+    b.classList.toggle('active', b.dataset.sort === mode));
+  // ordering means nothing while one project fills the pane
+  const sw = $('#bpSortSwitch');
+  if (sw) sw.classList.toggle('hidden', !!(expandedProjectId && getProject(expandedProjectId)));
 
   if (!projects.length) {
     const hint = el('div', 'empty-hint');
@@ -1032,7 +1039,7 @@ function objectivePayload() {
   // the whole list travels with every push so the widget can offer a switcher
   // without a round trip; each carries its own colour for the picker's dots
   const catColor = (x) => ((getCat(x.categoryId) || {}).color || 'gray');
-  const projects = (state.projects || []).map((x) => ({ id: x.id, name: x.name, color: catColor(x) }));
+  const projects = sortedProjects().map((x) => ({ id: x.id, name: x.name, color: catColor(x) }));
   if (!p) return { theme: state.theme, project: null, projects, tasks: [], remaining: 0 };
   const n = Math.max(OBJECTIVE_MIN,
     Math.min(OBJECTIVE_MAX, Math.round(Number(state.settings.objectiveCount)) || 4));

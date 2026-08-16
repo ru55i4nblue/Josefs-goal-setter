@@ -142,6 +142,10 @@ const WIDGET_TOP_MAX = 12;
 // how many sub-tasks the Current objective widget shows at once
 const OBJECTIVE_MIN = 1;
 const OBJECTIVE_MAX = 10;
+// how the Big Picture orders its project cards. Declared up here with the other
+// constants because migrate() reads it — a const sitting below its reader is
+// what caused the v4 data-loss incident.
+const PROJECT_SORTS = ['manual', 'date', 'category'];
 
 function weekKeyFromKey(key) {
   const [y, m, d] = key.split('-').map(Number);
@@ -193,7 +197,8 @@ function defaultState() {
       dateFormat: DEFAULT_DATE_FORMAT, dueDisplay: 'both',
       widgetMode: 'categories', widgetCategory: 'daily', widgetTop: 5,
       weekStart: 1, milestones: [],
-      objectiveProject: null, objectiveCount: 4
+      objectiveProject: null, objectiveCount: 4,
+      projectSort: 'manual'
     },
     taskmasterView: 'categories',   // 'categories' (per-category boxes) | 'grouped' (one due-today box)
     lastDay: todayKey(),
@@ -231,7 +236,12 @@ function migrate(s) {
   const cutoff = addDays(todayKey(), -30);
   s.deleted = s.deleted.filter((t) => (t.deletedAt || '9999') >= cutoff).slice(0, 200);
   if (!s.dayOrders || typeof s.dayOrders !== 'object') s.dayOrders = {};
-  if (!s.settings) s.settings = { showImport: true, showWeightNotes: true };
+  // a non-object here (a string from a corrupted save or a foreign sync payload)
+  // used to survive the truthy check and then throw further down, which trips the
+  // load guard and blocks every save — replace anything that isn't a plain object
+  if (!s.settings || typeof s.settings !== 'object' || Array.isArray(s.settings)) {
+    s.settings = { showImport: true, showWeightNotes: true };
+  }
   if (typeof s.settings.showImport !== 'boolean') s.settings.showImport = true;
   if (typeof s.settings.showWeightNotes !== 'boolean') s.settings.showWeightNotes = true;
   if (!DATE_FORMATS.some((f) => f.id === s.settings.dateFormat)) s.settings.dateFormat = DEFAULT_DATE_FORMAT;
@@ -255,6 +265,7 @@ function migrate(s) {
   }
   s.settings.objectiveCount = Math.max(OBJECTIVE_MIN,
     Math.min(OBJECTIVE_MAX, Math.round(Number(s.settings.objectiveCount)) || 4));
+  if (!PROJECT_SORTS.includes(s.settings.projectSort)) s.settings.projectSort = 'manual';
   if (typeof s.objectiveOpen !== 'boolean') s.objectiveOpen = false;
   // lastWeek used to be an ISO week number ("2026-W32"). Rewrite it to the new
   // start-date form for the CURRENT week, so upgrading doesn't look like a week
@@ -402,6 +413,38 @@ function projectNextDue(p) {
   const dates = subtasksOf(p.id).filter((t) => !t.done).map(dueDateOf).filter(Boolean).sort();
   return dates.length ? dates[0] : null;
 }
+/* Projects in the order the Big Picture shows them.
+     manual   — the order they were added, the drag order everywhere else
+     date     — each project's own deadline, falling back to its last sub-task;
+                undated sinks to the bottom, as it does in every other view
+     category — the category column order, so cards group by colour
+   Ties fall back to manual, so the order never wobbles between renders. */
+function sortedProjects() {
+  const list = (state.projects || []).slice();
+  const mode = (state.settings && state.settings.projectSort) || 'manual';
+  const manual = (a, b) => (a.order || 0) - (b.order || 0);
+
+  if (mode === 'date') {
+    return list.sort((a, b) => {
+      const da = projectDue(a);
+      const db = projectDue(b);
+      if (da && db) return da < db ? -1 : da > db ? 1 : manual(a, b);
+      if (da) return -1;
+      if (db) return 1;
+      return manual(a, b);
+    });
+  }
+  if (mode === 'category') {
+    // an orphaned categoryId sorts last rather than throwing the order out
+    const idx = (p) => {
+      const i = (state.categories || []).findIndex((c) => c.id === p.categoryId);
+      return i === -1 ? Number.MAX_SAFE_INTEGER : i;
+    };
+    return list.sort((a, b) => idx(a) - idx(b) || manual(a, b));
+  }
+  return list.sort(manual);
+}
+
 /* ---------- steps ----------
    The third level: a plain checklist inside a task. Steps deliberately carry no
    weight and no date — the task above them already holds both, and giving a step

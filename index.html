@@ -205,7 +205,14 @@
     <main id="page-bigpicture" class="page page-bigpicture hidden">
       <div class="bp-header">
         <h1 class="archive-title">Big Picture</h1>
-        <button id="bpNewBtn" class="btn-primary btn-small">＋ New project</button>
+        <div class="bp-header-actions">
+          <div id="bpSortSwitch" class="view-switch" title="Order the project cards">
+            <button class="sort-btn active" data-sort="manual">Manual</button>
+            <button class="sort-btn" data-sort="date">Date</button>
+            <button class="sort-btn" data-sort="category">Category</button>
+          </div>
+          <button id="bpNewBtn" class="btn-primary btn-small">＋ New project</button>
+        </div>
       </div>
       <div id="bigPictureBody" class="bp-body"></div>
     </main>

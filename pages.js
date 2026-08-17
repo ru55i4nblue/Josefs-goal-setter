@@ -896,9 +896,49 @@ function isStaleSchema(remote) {
   return !hasV2 && localHasTasks;
 }
 
+function applyRemote(remote) {
+  window.__goalApplyingRemote = true;
+  try {
+    state = migrate(Object.assign(defaultState(), remote));
+    refreshFullUI();
+  } finally { window.__goalApplyingRemote = false; }
+}
+
+// Pull the row and take it, republish over it, or leave things alone. The single
+// place that decides, so the boot path, the realtime handler, the focus check
+// and the Sync now button can't drift apart.
+async function reconcile() {
+  if (!(window.GoalCloud && window.GoalCloud.getSession && window.GoalCloud.getSession())) return false;
+  const remote = await window.GoalCloud.pull();
+  if (!remote || !Object.keys(remote).length) { cloudPush(state); return true; }
+  if (isStaleSchema(remote)) { cloudPush(state); return true; }
+  applyRemote(remote);
+  return true;
+}
+
+// Realtime is the fast path, not the only one. Anything that suggests we may
+// have missed an update — regaining focus, coming back online, or just time
+// passing — triggers a reconcile, throttled so they can't stack up.
+let lastReconcileAt = 0;
+let reconcileTimer = null;
+function scheduleReconcile(delay = 0, minGap = 15000) {
+  clearTimeout(reconcileTimer);
+  reconcileTimer = setTimeout(() => {
+    if (Date.now() - lastReconcileAt < minGap) return;
+    lastReconcileAt = Date.now();
+    reconcile();
+  }, delay);
+}
+
 function onRemoteState(remote) {
   if (!remote || !Object.keys(remote).length) return;
-  if (Date.now() - lastLocalEditAt < 2000) return;
+  if (Date.now() - lastLocalEditAt < 2000) {
+    // Don't discard it. A realtime event is the only notice that another device
+    // changed something; dropping it lost that change until the next restart.
+    // Come back for it once the local edit has settled.
+    scheduleReconcile(2500, 0);
+    return;
+  }
   if (isStaleSchema(remote)) {
     cloudPush(state);
     toast(Array.isArray(remote.tasks) && remote.tasks.length
@@ -906,11 +946,7 @@ function onRemoteState(remote) {
       : 'Ignored an empty update from the cloud — the tasks on this device were kept');
     return;
   }
-  window.__goalApplyingRemote = true;
-  try {
-    state = migrate(Object.assign(defaultState(), remote));
-    refreshFullUI();
-  } finally { window.__goalApplyingRemote = false; }
+  applyRemote(remote);
 }
 async function hydrateFromCloud() {
   if (hydrated) return;
@@ -935,12 +971,30 @@ async function hydrateFromCloud() {
   if (!unsubRemote) unsubRemote = GoalStore.subscribe(onRemoteState);
   updateAccountUI();
 }
+function syncStatusLine(st) {
+  if (!st) return '';
+  if (st.lastError) return '⚠ ' + st.lastError;
+  if (st.channel === 'retrying' || st.channel === 'joining') return 'Reconnecting…';
+  const when = st.lastSyncedAt ? new Date(st.lastSyncedAt) : null;
+  if (!when) return st.channel === 'live' ? 'Connected' : 'Not synced yet';
+  const mins = Math.floor((Date.now() - when.getTime()) / 60000);
+  const ago = mins < 1 ? 'just now' : mins < 60 ? mins + ' min ago' : Math.floor(mins / 60) + ' h ago';
+  return (st.channel === 'live' ? 'Synced ' : 'Offline · last synced ') + ago;
+}
+
 function updateAccountUI() {
   const email = window.GoalCloud && window.GoalCloud.userEmail && window.GoalCloud.userEmail();
   $('#accountRow').classList.toggle('hidden', !email);
   if (email) $('#accountEmail').textContent = email;
   const canSignIn = !!(window.GoalCloud && window.GoalCloud.available && window.GoalCloud.available() && !email);
   $('#signInBtn').classList.toggle('hidden', !canSignIn);
+
+  const line = $('#syncStatus');
+  if (line) {
+    const st = window.GoalCloud && window.GoalCloud.status ? window.GoalCloud.status() : null;
+    line.textContent = email ? syncStatusLine(st) : '';
+    line.classList.toggle('sync-bad', !!(st && st.lastError));
+  }
 }
 function showAuth() { $('#authModal').classList.remove('hidden'); }
 function hideAuth() { $('#authModal').classList.add('hidden'); }
@@ -963,6 +1017,15 @@ function wireAuth() {
   };
   $('#signOutBtn').onclick = async () => { await window.GoalCloud.signOut(); toast('Signed out'); };
   $('#signInBtn').onclick = showAuth;
+  $('#syncNowBtn').onclick = async () => {
+    lastReconcileAt = Date.now();
+    const ran = await reconcile();
+    updateAccountUI();
+    const st = window.GoalCloud.status ? window.GoalCloud.status() : null;
+    if (!ran) toast('Not signed in');
+    else if (st && st.lastError) toast('Sync problem: ' + st.lastError);
+    else toast('Synced');
+  };
 }
 
 async function setupSync() {
@@ -977,6 +1040,25 @@ async function setupSync() {
       hydrated = false; updateAccountUI(); showAuth();
     }
   });
+  // surface what sync is doing instead of failing mutely
+  if (window.GoalCloud.onStatus) {
+    let shownError = null;
+    window.GoalCloud.onStatus((st) => {
+      updateAccountUI();
+      if (st.lastError && st.lastError !== shownError) {
+        shownError = st.lastError;
+        toast('Sync problem: ' + st.lastError);
+      }
+      if (!st.lastError) shownError = null;
+    });
+  }
+  // keep the "synced N min ago" line honest without touching the network
+  setInterval(updateAccountUI, 30000);
+  // catch anything realtime missed
+  window.addEventListener('focus', () => scheduleReconcile(200));
+  window.addEventListener('online', () => scheduleReconcile(500, 0));
+  setInterval(() => scheduleReconcile(0, 60000), 5 * 60 * 1000);
+
   if (window.GoalCloud.getSession()) { hideAuth(); await hydrateFromCloud(); }
   else { updateAccountUI(); showAuth(); }
 }

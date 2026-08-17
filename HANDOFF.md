@@ -141,6 +141,23 @@ Supabase, one JSON row per user in `user_state`, protected by row-level security
   republishes ours. Each older version would mangle something the newer one added
   (v2 re-dates undated tasks; v3 turns sub-tasks into loose tasks).
 - **An empty remote payload is refused whatever version it claims**, if local has tasks.
+- **`reconcile()` in pages.js is the only place that decides** whether to adopt the cloud
+  row, republish over it, or do nothing. Boot, the realtime handler, the focus/online
+  checks, the five-minute sweep and the ↻ Sync now button all go through it, so they
+  can't drift apart.
+- **Realtime is the fast path, never the only one.** A websocket drops (sleep, wifi
+  change) and nothing used to notice: `subscribe()` ignored the channel status, so sync
+  stopped until the app restarted. It now watches the status, rebuilds with a backoff,
+  and the periodic/focus reconcile means sync still converges if realtime is blocked
+  outright.
+- **Never swallow a sync error.** `push`, `pull` and the channel all report through
+  `GoalCloud.status()` / `onStatus()`, which drives the status line in the account row.
+  A silent sync is indistinguishable from a working one — that is what made the last
+  outage impossible to diagnose remotely.
+- Diagnosing sync against the real account: **copy `%APPDATA%\Goal Setter` and run
+  Electron with `--user-data-dir` pointed at the copy** — the session comes with it, so
+  you get real pulls without a second process on the live leveldb. Stub
+  `GoalCloud.push` to a no-op first or the throwaway profile will write to the real row.
 
 ### The data-loss incident — read this before touching `migrate()`
 

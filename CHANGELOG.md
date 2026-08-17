@@ -7,7 +7,27 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- **Sync tells you what it's doing.** The account area now shows "Synced just
+  now", "Reconnecting…" or the actual error, and there's a **↻ Sync now** button
+  to check the cloud on demand.
+
+### Fixed
+
+- **Sync could stop silently and stay stopped until a restart.** Live updates
+  ride a websocket; if it dropped — a laptop sleeping, a network change — nothing
+  noticed, nothing reconnected, and nothing said so. The connection is now
+  watched and rebuilt with a backoff, and the app re-checks the cloud when it
+  regains focus, when the network returns, and every few minutes regardless.
+- **Sync failures were invisible.** A rejected save to the cloud, a failed read
+  and a dead connection were all discarded without a message, so a broken sync
+  looked exactly like a working one. All three now surface.
+- **An update arriving mid-edit was thrown away.** If another device's change
+  landed within two seconds of you typing, it was dropped and lost until the next
+  restart; it's now re-fetched once your edit settles.
+- The signed-in email failed the contrast floor in every theme (2.72:1 in light,
+  needs 4.5); it now reads 7.42:1.
 
 ## [2.9.0] — 2026-08-16
 

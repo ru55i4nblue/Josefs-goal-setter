@@ -1308,10 +1308,21 @@ body.dark .tint-gray  { --c: #9b9a97; }
 }
 .account-row { padding: 6px 10px 8px; border-top: 1px solid var(--border); margin-bottom: 4px; }
 .account-email {
-  display: block; font-size: 11.5px; color: var(--text-faint);
+  /* --text-faint measured 2.72:1 here in the light theme; this is the account
+     you're signed in as, which you need to be able to read */
+  display: block; font-size: 11.5px; color: var(--chip-text);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 2px;
 }
 .account-signout { padding: 4px 0 !important; font-size: 12px; }
+/* --chip-text, not --text-faint: this line reports whether sync is working, so
+   it has to be readable rather than decorative */
+.sync-status {
+  display: block; font-size: 11px; color: var(--chip-text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 3px;
+}
+.sync-status.sync-bad { color: var(--danger-text); font-weight: 600; }
+.account-actions { display: flex; gap: 12px; }
+.account-actions .sidebar-btn { flex: 1; }
 
 /* ===================== TOAST ===================== */
 .toast {

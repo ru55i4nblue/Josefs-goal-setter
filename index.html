@@ -57,7 +57,11 @@
       <button id="signInBtn" class="sidebar-btn hidden">🔑 Sign in to sync</button>
       <div id="accountRow" class="account-row hidden">
         <span id="accountEmail" class="account-email"></span>
-        <button id="signOutBtn" class="sidebar-btn account-signout">Sign out</button>
+        <span id="syncStatus" class="sync-status"></span>
+        <div class="account-actions">
+          <button id="syncNowBtn" class="sidebar-btn account-signout" title="Check the cloud for changes now">↻ Sync now</button>
+          <button id="signOutBtn" class="sidebar-btn account-signout">Sign out</button>
+        </div>
       </div>
       <button id="widgetToggle" class="sidebar-btn">📌 All goals: off</button>
       <button id="objectiveToggle" class="sidebar-btn">◎ Current objective: off</button>

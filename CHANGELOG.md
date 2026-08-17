@@ -7,6 +7,10 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [2.9.1] — 2026-08-17
+
 ### Added
 
 - **Sync tells you what it's doing.** The account area now shows "Synced just
@@ -505,7 +509,8 @@ First public release. Windows installer and macOS disk images published from CI.
 - Recurring tasks showing as already completed when viewing a future day.
 - macOS CI builds failing while attempting to publish a release.
 
-[Unreleased]: https://github.com/ru55i4nblue/Josefs-goal-setter/compare/v2.9.0...HEAD
+[Unreleased]: https://github.com/ru55i4nblue/Josefs-goal-setter/compare/v2.9.1...HEAD
+[2.9.1]: https://github.com/ru55i4nblue/Josefs-goal-setter/compare/v2.9.0...v2.9.1
 [2.9.0]: https://github.com/ru55i4nblue/Josefs-goal-setter/compare/v2.8.0...v2.9.0
 [2.8.0]: https://github.com/ru55i4nblue/Josefs-goal-setter/compare/v2.7.1...v2.8.0
 [2.7.1]: https://github.com/ru55i4nblue/Josefs-goal-setter/compare/v2.7.0...v2.7.1

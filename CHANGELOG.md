@@ -7,7 +7,27 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
-_Nothing yet._
+### Changed
+
+- **The calendar is a month at a time**, laid out like a wall calendar: whole
+  weeks starting on your chosen week-start day, days either side of the month
+  shown faintly for alignment, today outlined. Each day lists what's due on it
+  and a "+2 more" when a day is busy; clicking a day still opens it. ‹ and ›
+  now step a month.
+- **Routine no longer appears on the calendar.** Routine is a standing list that
+  carries no date, so it repeated in every single cell and buried the actual
+  deadlines. It's untouched everywhere else, including when you open a day.
+
+### Fixed
+
+- **Completing work in a project now moves its bar.** Ticking a sub-task filed
+  it away and removed it from the task list — which is where project progress is
+  measured from — so the finished work vanished instead of counting, and every
+  project sat at 0% forever. Sub-tasks now stay with their project, and any that
+  were archived out of one are put back automatically when the app next starts.
+- A damaged saved file containing an empty entry in its archive or task list
+  could stop the app loading, which in turn blocks all saving. Those entries are
+  now discarded.
 
 ## [2.9.1] — 2026-08-17
 

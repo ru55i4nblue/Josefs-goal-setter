@@ -599,64 +599,72 @@ function tasksForDate(key) {
   return dailyTasksToday(key);
 }
 
-// Week the calendar is showing — always starts on the week containing today.
-let calWeekStart = mondayOf(todayKey());
+// Month the calendar is showing.
+let calMonthStart = monthStart(todayKey());
 
 function renderCalendar() {
-  const wrap = $('#calWeek');
+  const wrap = $('#calMonth');
+  if (!wrap) return;
   wrap.innerHTML = '';
   const tk = todayKey();
-  const days = weekDays(calWeekStart);
+  const days = monthGridDays(calMonthStart);
 
-  const first = days[0], last = days[6];
-  const thisWeek = weekKeyFromKey(calWeekStart) === weekKey();
-  $('#weekLabel').textContent = `${shortDate(first)} – ${shortDate(last)}`
-    + (thisWeek ? ' · this week' : '');
-  $('#weekToday').classList.toggle('active', thisWeek);
+  const thisMonth = sameMonth(calMonthStart, tk);
+  $('#weekLabel').textContent = monthLabel(calMonthStart) + (thisMonth ? ' · this month' : '');
+  $('#weekToday').classList.toggle('active', thisMonth);
+
+  // weekday header, following the user's week-start setting
+  const dows = $('#calDows');
+  if (dows) {
+    dows.innerHTML = '';
+    days.slice(0, 7).forEach((k) => {
+      const d = el('div', 'cal-dow');
+      d.textContent = DAYS_SHORT[weekdayOf(k)];
+      dows.appendChild(d);
+    });
+  }
 
   days.forEach((key) => {
-    const col = el('div', 'week-day');
-    if (key === tk) col.classList.add('today');
-    else if (key < tk) col.classList.add('past');
+    const cell = el('div', 'cal-cell');
+    if (!sameMonth(key, calMonthStart)) cell.classList.add('outside');
+    if (key === tk) cell.classList.add('today');
+    else if (key < tk) cell.classList.add('past');
 
-    const head = el('div', 'week-day-head');
-    head.innerHTML = `<span class="wd-name">${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][weekdayOf(key)]}</span>`
-      + `<span class="wd-num">${Number(key.split('-')[2])}</span>`;
-    col.appendChild(head);
+    const num = el('div', 'cal-daynum');
+    num.textContent = Number(key.split('-')[2]);
+    cell.appendChild(num);
 
-    const weekly = weekdayOf(key) === 1 ? weeklyTasksNow(key) : [];
-    const items = weekly.map((t) => ({ t, weekly: true }))
-      .concat(tasksForDate(key).map((t) => ({ t, weekly: false })));
-
-    if (!items.length) {
-      const e = el('div', 'week-empty');
-      e.textContent = '—';
-      col.appendChild(e);
-    }
-    items.forEach(({ t, weekly: isW }) => {
-      const p = el('div', 'cal-pill' + (isW ? ' weekly' : (t.weight >= 3 ? ' w-hi' : ''))
+    const list = el('div', 'cal-items');
+    const items = calendarTasksFor(key);
+    // A month cell is short. Show what fits and count the rest, like Apple's does.
+    const MAX = 3;
+    items.slice(0, MAX).forEach((t) => {
+      const pill = el('div', 'cal-pill'
+        + (t.weight >= 3 ? ' w-hi' : '')
         + (occurrenceDone(t, key) ? ' done' : ''));
-      p.textContent = t.title;
-      p.title = `${t.title}${catHasWeight(t.categoryId) ? ` (×${t.weight})` : ''}`;
+      const cat = getCat(t.categoryId);
+      if (cat) pill.classList.add('tint-' + cat.color);
+      pill.textContent = t.title;
+      pill.title = `${t.title}${catHasWeight(t.categoryId) ? ` (×${t.weight})` : ''}`;
       if (key >= tk && t.id) {
-        p.classList.add('editable');
-        p.onclick = (e) => { e.stopPropagation(); openEditModal(t.id); };
+        pill.classList.add('editable');
+        pill.onclick = (e) => { e.stopPropagation(); openEditModal(t.id); };
       }
-      col.appendChild(p);
+      list.appendChild(pill);
     });
+    if (items.length > MAX) {
+      const more = el('div', 'cal-more');
+      more.textContent = `+${items.length - MAX} more`;
+      list.appendChild(more);
+    }
+    cell.appendChild(list);
 
-    const add = el('button', 'week-add');
-    add.textContent = '＋';
-    add.title = 'Open this day';
-    add.onclick = (e) => { e.stopPropagation(); openDayModal(key); };
-    col.appendChild(add);
-
-    col.onclick = () => openDayModal(key);
-    wrap.appendChild(col);
+    cell.onclick = () => openDayModal(key);
+    wrap.appendChild(cell);
   });
 }
-function shiftWeek(n) { calWeekStart = addDays(calWeekStart, n * 7); renderCalendar(); }
-function calendarToToday() { calWeekStart = mondayOf(todayKey()); renderCalendar(); }
+function shiftMonth(n) { calMonthStart = addMonths(calMonthStart, n); renderCalendar(); }
+function calendarToToday() { calMonthStart = monthStart(todayKey()); renderCalendar(); }
 
 /* ---------- day view modal ---------- */
 let dayModalKey = null;
@@ -1190,8 +1198,8 @@ function wire() {
   });
 
   /* ---- calendar week nav ---- */
-  $('#weekPrev').onclick = () => shiftWeek(-1);
-  $('#weekNext').onclick = () => shiftWeek(1);
+  $('#weekPrev').onclick = () => shiftMonth(-1);
+  $('#weekNext').onclick = () => shiftMonth(1);
   $('#weekToday').onclick = calendarToToday;
 
   /* ---- import ---- */

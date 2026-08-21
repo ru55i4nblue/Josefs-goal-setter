@@ -93,6 +93,7 @@ function rolloverIfNeeded() {
     }
     state.tasks = state.tasks.filter((t) => {
       const type = catType(t.categoryId);
+      if (isSubtask(t)) return true;                  // belongs to its project, not to the day
       if (type !== 'daily' && type !== 'routine') return true;
       if (type === 'routine' || t.recurring) return true;
       if (!t.deliverBy) return true;                  // undated is a someday pile, never swept
@@ -114,6 +115,7 @@ function rolloverIfNeeded() {
       state.weeklyArchive = state.weeklyArchive.slice(0, 4);
     }
     state.tasks = state.tasks.filter((t) => {
+      if (isSubtask(t)) return true;                  // belongs to its project, not to the week
       if (catType(t.categoryId) !== 'weekly' || t.recurring) return true;
       if (!t.deliverBy) return true;                  // undated is a someday pile, never swept
       if (!t.done) return true;                       // unfinished work carries forward as overdue
@@ -147,8 +149,12 @@ function toggleTask(id) {
   t.completedAt = t.done ? nowTime() : null;
   // the DATE matters for recurrence: resetDueOn() measures from here
   t.completedOn = t.done ? todayKey() : null;
-  // completing a task in a custom category files it away in that category's archive
-  if (t.done && catType(t.categoryId) === 'custom' && !t.recurring) {
+  // Completing a task in a custom category files it away in that category's
+  // archive — but never a sub-task. Archiving removes it from
+  // state.tasks, and subtasksOf() reads state.tasks — so the finished work
+  // vanished from its project instead of filling its bar, which is why project
+  // progress could never move. Sub-tasks are cleared with their project.
+  if (t.done && catType(t.categoryId) === 'custom' && !t.recurring && !isSubtask(t)) {
     state.archive.unshift({ ...t, archivedAt: todayKey() });
     state.tasks = state.tasks.filter((x) => x.id !== id);
     afterChange();

@@ -799,7 +799,8 @@ body.dark .vtick { background: #000; opacity: .35; }
 .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
 .cal-dow {
   font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
-  color: var(--text-faint); text-align: center; padding-bottom: 4px; font-weight: 600;
+  /* --text-faint measured 2.81:1 here in light; these are labels, not decoration */
+  color: var(--chip-text); text-align: center; padding-bottom: 4px; font-weight: 600;
 }
 .cal-cell {
   min-height: 92px; border: 1px solid var(--border); border-radius: 8px;
@@ -811,9 +812,24 @@ body.dark .vtick { background: #000; opacity: .35; }
 .cal-cell.empty { background: transparent; border: none; cursor: default; }
 .cal-cell.empty:hover { transform: none; }
 .cal-cell.today { border-color: var(--purple); box-shadow: 0 0 0 1px var(--purple); }
-.cal-cell.past { opacity: .6; }
-.cal-daynum { font-size: 12px; font-weight: 600; color: var(--text-soft); }
-.cal-cell.today .cal-daynum { color: var(--purple); }
+/* A month view is mostly past days, so they can't be faded into
+   illegibility — .6 opacity put the date at 2.89:1. Drop the card surface
+   instead and leave the text alone. */
+.cal-cell.past { background: transparent; }
+.cal-cell.past .cal-daynum { font-weight: 400; }
+/* Days either side of the month being shown: present for grid alignment, but
+   clearly not part of this month. Marked by dropping the card surface rather
+   than fading the text — at .38 opacity the date read 1.62:1. */
+.cal-cell.outside { background: transparent; border-color: transparent; }
+.cal-cell.outside .cal-daynum { font-weight: 400; }
+.cal-cell.outside:hover { border-color: var(--border); }
+.cal-items { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cal-dows { margin-bottom: 2px; }
+.cal-cells { grid-auto-rows: 1fr; }
+.cal-daynum { font-size: 12px; font-weight: 600; color: var(--chip-text); }
+/* --accent-text, not raw --purple: the palette is for fills, and --purple
+   measured 3.95:1 as text here */
+.cal-cell.today .cal-daynum { color: var(--accent-text); }
 .cal-pill {
   font-size: 11.5px; line-height: 1.35; padding: 1px 5px; border-radius: 4px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -1095,35 +1111,6 @@ body.dark .checkbox.neon.checked::after { color: #08130c; }
 .week-today.active { background: var(--purple); color: #fff; border-color: var(--purple); }
 .week-label { font-size: 13px; color: var(--text-faint); margin-left: 6px; }
 
-.cal-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
-.week-day {
-  min-height: 190px; border: 1px solid var(--border); border-radius: 9px;
-  background: var(--bg-elev); padding: 8px 8px 6px; cursor: pointer;
-  display: flex; flex-direction: column; gap: 4px;
-  transition: border-color .15s, transform .1s;
-}
-.week-day:hover { border-color: var(--purple); transform: translateY(-1px); }
-.week-day.today { border-color: var(--purple); box-shadow: 0 0 0 1px var(--purple); }
-.week-day.past { opacity: .62; }
-.week-day-head {
-  display: flex; align-items: baseline; justify-content: space-between;
-  padding-bottom: 5px; margin-bottom: 2px; border-bottom: 1px solid var(--border);
-}
-.wd-name {
-  font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em;
-  font-weight: 700; color: var(--text-faint);
-}
-.wd-num { font-size: 15px; font-weight: 700; color: var(--text-soft); }
-.week-day.today .wd-name, .week-day.today .wd-num { color: var(--purple); }
-.week-empty { font-size: 11px; color: var(--text-faint); text-align: center; padding: 8px 0; }
-.week-add {
-  margin-top: auto; background: none; border: none; cursor: pointer;
-  color: var(--text-faint); font-size: 13px; padding: 3px; border-radius: 5px;
-  opacity: 0; transition: opacity .15s;
-}
-.week-day:hover .week-add { opacity: 1; }
-.week-add:hover { background: var(--hover); color: var(--purple); }
-
 /* ===================== ARCHIVE RESTORE BUTTON ===================== */
 .btn-restore {
   opacity: 1 !important;
@@ -1167,9 +1154,13 @@ body.dark .checkbox.neon.checked::after { color: #08130c; }
 .tm-cat.red { color: #ef4444; }
 
 @media (max-width: 760px) {
-  .cal-week { grid-template-columns: 1fr; }
-  .week-day { min-height: 0; }
-  .week-add { opacity: 1; }
+  /* a seven-across month is unreadable on a phone; shrink the cells rather than
+     stacking them, so it still reads as a calendar */
+  .cal-grid { gap: 3px; }
+  .cal-cell { min-height: 58px; padding: 3px 4px; border-radius: 6px; }
+  .cal-daynum { font-size: 11px; }
+  .cal-pill { font-size: 9.5px; padding: 0 3px; }
+  .cal-dow { font-size: 9.5px; }
 }
 
 /* ===================== CREATE / SETTINGS ===================== */

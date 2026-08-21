@@ -261,6 +261,28 @@ list can't wobble between renders. The `.sort-btn` class deliberately is **not**
 reusing the class would have silently broken the Taskmaster switch; they share the CSS
 only.
 
+**A completed sub-task stays in `state.tasks`.** `projectProgress()` is
+`asProgress(subtasksOf(p.id))`, and `subtasksOf()` reads `state.tasks` — so anything that
+removes a task from that array erases the finished work from its project instead of
+counting it. Two paths used to: the custom-category archive in `toggleTask()` and the
+daily/weekly rollover sweeps. All three now skip `isSubtask(t)`; sub-tasks are cleared when
+their project is deleted, nothing else. `migrate()` also rescues sub-tasks already stranded
+in `state.archive` whose project still exists.
+
+**The calendar is date-driven, not category-driven.** `calendarTasksFor()` in model.js is
+its only source: a task appears on the day `dueDateOf()` reports, recurring work on the days
+`recursOn()` says, and routine never — it carries no date and would otherwise repeat in all
+42 cells. Don't reach for `catTasksFor()` here: `activeOn()` returns true for every `custom`
+task on every date, which is harmless in a category box and catastrophic in a month grid.
+The day modal is a separate surface and still shows routine, deliberately — it is the only
+place those chores can be ticked against a date.
+
+**Opacity is not a free way to de-emphasise.** The month grid is mostly past and
+out-of-month days; fading them at `.6`/`.38` put the dates at 2.89:1 and 1.62:1. They're
+distinguished by dropping the card surface instead, with the text left alone. When
+measuring, composite semi-transparent backgrounds properly — treating `rgba(...,.14)` as
+opaque produced a bogus 1.2:1 for pills that actually measure ~6:1.
+
 **A UI control must never display a value the state doesn't hold.** `renderSettings()` used
 to set the objective project dropdown's `value` to a fallback without writing it back, so
 the select showed a project that `settings.objectiveProject` didn't hold — and since the

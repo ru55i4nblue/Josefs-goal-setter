@@ -163,6 +163,47 @@ function uid() { return Date.now().toString(36) + Math.random().toString(36).sli
 // First day of the week containing `key`, per the user's chosen start day.
 function mondayOf(key) { return weekRangeOf(key).from; }
 function weekDays(startKey) { return Array.from({ length: 7 }, (_, i) => addDays(startKey, i)); }
+/* ---------- month grid ----------
+   The calendar is a month at a time. The grid always holds whole weeks starting
+   on the user's chosen week-start day, so every row is seven cells and the
+   leading/trailing days belong to the neighbouring months. */
+function monthStart(key) { const [y, m] = key.split('-').map(Number); return `${y}-${pad(m)}-01`; }
+function addMonths(key, n) {
+  const [y, m] = key.split('-').map(Number);
+  const d = new Date(y, m - 1 + n, 1);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`;
+}
+function sameMonth(a, b) { return a.slice(0, 7) === b.slice(0, 7); }
+function monthLabel(key) { const p = dateParts(key); return `${p.ML} ${p.y}`; }
+function monthGridDays(key) {
+  const first = monthStart(key);
+  const start = weekRangeOf(first).from;              // back to the week's start day
+  const last = addDays(addMonths(first, 1), -1);
+  const end = weekRangeOf(last).from;
+  const rows = Math.round((new Date(end.slice(0, 4), +end.slice(5, 7) - 1, +end.slice(8))
+    - new Date(start.slice(0, 4), +start.slice(5, 7) - 1, +start.slice(8))) / 6048e5) + 1;
+  return Array.from({ length: rows * 7 }, (_, i) => addDays(start, i));
+}
+
+/* What the calendar shows on a given day. Unlike the category boxes this is
+   purely date-driven: a task appears on the day it's actually due, and recurring
+   work on the days it recurs. Routine never appears — it carries no date at all
+   and is a standing list, so it would repeat in all 35 cells and bury the month. */
+function calendarTasksFor(dateKey) {
+  const live = topLevelTasks(state.tasks).filter((t) => {
+    if (catType(t.categoryId) === 'routine') return false;
+    if (t.recurring) return recursOn(t, dateKey);
+    return dueDateOf(t) === dateKey;
+  });
+  if (dateKey >= todayKey()) return live;
+  // Completed one-offs are swept at rollover; the daily archive keeps the last
+  // week of them, so recent days aren't blank.
+  const arch = (state.dailyArchive || []).find((a) => a.date === dateKey);
+  if (!arch) return live;
+  const seen = new Set(live.map((t) => t.id));
+  return live.concat((arch.tasks || []).filter((t) =>
+    t && !seen.has(t.id) && catType(t.categoryId) !== 'routine'));
+}
 // "3 – 9 Aug", for labelling a week without spelling both dates out in full.
 function weekRangeLabel(startKey) {
   return `${shortDate(startKey)} – ${shortDate(addDays(startKey, 6))}`;
@@ -232,6 +273,13 @@ function migrate(s) {
   if (!Array.isArray(s.tasks)) s.tasks = [];
   if (!Array.isArray(s.archive)) s.archive = [];
   if (!Array.isArray(s.deleted)) s.deleted = [];
+  // A null or non-object entry from a damaged save or a foreign sync payload
+  // breaks every later pass over these lists — and a migrate() throw blocks all
+  // saves, so one bad element could lock the app read-only.
+  const isRecord = (t) => !!t && typeof t === 'object' && !Array.isArray(t);
+  s.tasks = s.tasks.filter(isRecord);
+  s.archive = s.archive.filter(isRecord);
+  s.deleted = s.deleted.filter(isRecord);
   // recently-deleted is a safety net, not storage — drop anything over 30 days old
   const cutoff = addDays(todayKey(), -30);
   s.deleted = s.deleted.filter((t) => (t.deletedAt || '9999') >= cutoff).slice(0, 200);
@@ -266,6 +314,24 @@ function migrate(s) {
   s.settings.objectiveCount = Math.max(OBJECTIVE_MIN,
     Math.min(OBJECTIVE_MAX, Math.round(Number(s.settings.objectiveCount)) || 4));
   if (!PROJECT_SORTS.includes(s.settings.projectSort)) s.settings.projectSort = 'manual';
+
+  // Repair: completing a sub-task used to archive it, which took it out of
+  // s.tasks — and project progress reads s.tasks, so finished work disappeared
+  // from its project instead of counting towards it, leaving every project bar
+  // stuck at 0%. Put archived sub-tasks back with the project they belong to.
+  if (Array.isArray(s.archive) && Array.isArray(s.projects) && Array.isArray(s.tasks)) {
+    const live = new Set(s.projects.map((p) => p && p.id));
+    const known = new Set(s.tasks.map((t) => t && t.id));
+    const belongs = (t) => !!(t && t.parentId && live.has(t.parentId));
+    s.archive.filter(belongs).forEach((t) => {
+      if (known.has(t.id)) return;
+      known.add(t.id);
+      const back = Object.assign({}, t);
+      delete back.archivedAt;
+      s.tasks.push(back);
+    });
+    s.archive = s.archive.filter((t) => !belongs(t));
+  }
   if (typeof s.objectiveOpen !== 'boolean') s.objectiveOpen = false;
   // lastWeek used to be an ISO week number ("2026-W32"). Rewrite it to the new
   // start-date form for the CURRENT week, so upgrading doesn't look like a week

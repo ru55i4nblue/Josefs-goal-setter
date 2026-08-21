@@ -7,6 +7,10 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [2.10.0] — 2026-08-22
+
 ### Changed
 
 - **The calendar is a month at a time**, laid out like a wall calendar: whole
@@ -25,6 +29,11 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
   measured from — so the finished work vanished instead of counting, and every
   project sat at 0% forever. Sub-tasks now stay with their project, and any that
   were archived out of one are put back automatically when the app next starts.
+- **Sync could wipe your projects.** The guard that stops an empty cloud payload
+  replacing local work only ever inspected tasks, so an update carrying tasks but
+  no projects wasn't "empty" — it was adopted, and it took every project on that
+  device with it. That is how a machine whose projects had never reached the
+  cloud lost them. Projects are now protected the same way tasks are.
 - A damaged saved file containing an empty entry in its archive or task list
   could stop the app loading, which in turn blocks all saving. Those entries are
   now discarded.
@@ -529,7 +538,8 @@ First public release. Windows installer and macOS disk images published from CI.
 - Recurring tasks showing as already completed when viewing a future day.
 - macOS CI builds failing while attempting to publish a release.
 
-[Unreleased]: https://github.com/ru55i4nblue/Josefs-goal-setter/compare/v2.9.1...HEAD
+[Unreleased]: https://github.com/ru55i4nblue/Josefs-goal-setter/compare/v2.10.0...HEAD
+[2.10.0]: https://github.com/ru55i4nblue/Josefs-goal-setter/compare/v2.9.1...v2.10.0
 [2.9.1]: https://github.com/ru55i4nblue/Josefs-goal-setter/compare/v2.9.0...v2.9.1
 [2.9.0]: https://github.com/ru55i4nblue/Josefs-goal-setter/compare/v2.8.0...v2.9.0
 [2.8.0]: https://github.com/ru55i4nblue/Josefs-goal-setter/compare/v2.7.1...v2.8.0

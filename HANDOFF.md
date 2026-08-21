@@ -12,7 +12,7 @@ macOS) that is also a PWA for phones, with optional live sync via Supabase.
 - **Project folder:** `C:\Users\ru55i\Documents\Claude Files\Goal Setter`
 - **GitHub:** https://github.com/ru55i4nblue/Josefs-goal-setter (public)
   - ⚠️ The repo was **renamed** from `goal-setter`; old URLs still redirect.
-- **Current version:** 2.9.1 (tag `v2.9.1`) · **save format v4**
+- **Current version:** 2.10.0 (tag `v2.10.0`) · **save format v4**
 - **Stack:** vanilla HTML/CSS/JS — no framework, no build step — wrapped in Electron.
 
 ## The idea
@@ -140,7 +140,10 @@ Supabase, one JSON row per user in `user_state`, protected by row-level security
 - **`isStaleSchema()` refuses v1, v2 and v3 payloads** when local holds tasks, and
   republishes ours. Each older version would mangle something the newer one added
   (v2 re-dates undated tasks; v3 turns sub-tasks into loose tasks).
-- **An empty remote payload is refused whatever version it claims**, if local has tasks.
+- **An empty remote payload is refused whatever version it claims**, if local has tasks —
+  and, since 2.10.0, a payload with no projects is refused if local has projects. The
+  emptiness test covered only `tasks`, so a payload with tasks and no projects sailed
+  through and wiped them. **Any new top-level collection needs adding to this test.**
 - **`reconcile()` in pages.js is the only place that decides** whether to adopt the cloud
   row, republish over it, or do nothing. Boot, the realtime handler, the focus/online
   checks, the five-minute sweep and the ↻ Sync now button all go through it, so they
@@ -210,7 +213,7 @@ version's CHANGELOG section. `build-mac.yml` is manual-only.
 
 **macOS packaging:** arm64 ships as `.dmg`, Intel as `.zip` — electron-builder's DMG step
 fails cross-building x64 on Apple Silicon runners. `build/afterPack.js` ad-hoc signs the
-bundle. This has now built cleanly for 2.3.0 through 2.9.1; treat it as solved.
+bundle. This has now built cleanly for 2.3.0 through 2.10.0; treat it as solved.
 
 ## Open items
 

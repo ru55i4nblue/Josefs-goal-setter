@@ -893,6 +893,15 @@ function isStaleSchema(remote) {
   // and prevents a total wipe at best.
   const remoteIsEmpty = !Array.isArray(remote.tasks) || !remote.tasks.length;
   if (remoteIsEmpty && localHasTasks) return true;
+  // The same protection for projects, which it did not used to have. A payload
+  // carrying tasks but no projects at all is not "empty" by the test above, so
+  // it was adopted and took every local project with it — that is how a device
+  // whose projects had never reached the cloud lost them on the next sync.
+  // Deleting your last project is legitimate but rare; refusing costs one
+  // republish and prevents a silent wipe.
+  const localHasProjects = Array.isArray(state.projects) && state.projects.length;
+  const remoteHasProjects = Array.isArray(remote.projects) && remote.projects.length;
+  if (!remoteHasProjects && localHasProjects) return true;
   if (remote.version >= 3) return false;
   // A v2 client has no concept of an undated task: its migrate() stamps today's
   // date onto anything without one, which would re-date the whole someday pile
